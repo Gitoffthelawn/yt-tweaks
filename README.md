@@ -1,11 +1,12 @@
-![Add-On icon](./src/icons/icon-128.png)
-# YT Tweaks
+<h1 align="center">YT Tweaks</h1>
 
-A collection of tweaks for hiding Shorts, disabling auto-dubbing, disabling 'Video paused. Continue watching?', changing the number of videos per row and more!
+A collection of tweaks for hiding Shorts, disabling 'Video paused. Continue watching?', changing the number of videos per row and more!
 
-[![Firefox Addons](./images/firefox-addons-banner.png)](https://addons.mozilla.org/firefox/addon/youtube-tweaks/)
-[![Chrome Web Store](./images/cws-banner.png)](https://chromewebstore.google.com/detail/yt-tweaks/oeakphpfoaeggagmgphfejmfjbhjfhhh)
-[![Edge Addons](./images/edge-addons-banner.png)](https://microsoftedge.microsoft.com/addons/detail/yt-tweaks/ccckogghpbgibdllcncmehbgeecljpmh)
+<p align="center">
+  <a href="https://addons.mozilla.org/firefox/addon/youtube-tweaks/"><img alt="Get it for Firefox" src="./images/firefox-addons-banner.png"/></a>
+  <a href="https://chromewebstore.google.com/detail/yt-tweaks/oeakphpfoaeggagmgphfejmfjbhjfhhh"><img alt="Get it for Chrome/Brave/Opera/Vivaldi" src="./images/cws-banner.png"/></a>
+  <a href="https://microsoftedge.microsoft.com/addons/detail/yt-tweaks/ccckogghpbgibdllcncmehbgeecljpmh"><img alt="Get it for Edge" src="./images/edge-addons-banner.png"/></a>
+</p>
 
 ## Features
 - Change the number of videos per row / Change the size of thumbnails
