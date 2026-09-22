@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Calendar Versioning](https://calver.org/).
 
+## v2026.9.22
+## New features
+- Click left/right side of the player to:
+- Seek backward/forward
+- Decrease/increase speed
+- Decrease/increase volume
+- Zoom in/out
+
+## v2026.9.8
+## New
+- Added pt-BR localization support
+
+## Fixed
+- Placement of button that shows search results in new tab
+- Not hiding/dimming watched videos in search page
+- Not hiding shorts button in left sidebar in a few YT languages
+- NordPass extension preventing YT Tweaks from working
+
 ## v2026.8.10
 ## New feature
 - Default live chat view

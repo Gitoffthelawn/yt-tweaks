@@ -441,7 +441,7 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
-	if (settings.changeSpeedOnScroll || settings.changeVolOnScroll || settings.seekOnScroll || settings.zoomOnScroll) {
+	if (settings.changeSpeedOnScroll || settings.changeVolOnScroll || settings.seekOnScroll || settings.zoomOnScroll || settings.clickToSeek || settings.clickToChangeSpeed || settings.clickToChangeVol || settings.clickToZoom) {
 		ytTweaks.sheet.textContent += `
 		.blockHoldFor2x .ytp-speedmaster-overlay {
 		  display: none;
@@ -454,32 +454,48 @@ ytTweaks.tweaks.push(function (settings) {
 
 		let preventDefault;
 
-		const changeSpeedOnScroll = settings.changeSpeedOnScroll;
-		const changeVolOnScroll = settings.changeVolOnScroll;
 		const seekOnScroll = settings.seekOnScroll;
+		const clickToSeek = settings.clickToSeek;
+		const changeSpeedOnScroll = settings.changeSpeedOnScroll;
+		const clickToChangeSpeed = settings.clickToChangeSpeed;
+		const changeVolOnScroll = settings.changeVolOnScroll;
+		const clickToChangeVol = settings.clickToChangeVol;
 		const zoomOnScroll = settings.zoomOnScroll;
-
-		const normalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
-
-		const speedStep = settings.speedChangePerScroll ?? 0.05;
-		const changeSpeedModifier = settings.changeSpeedOnScrollModifier;
-		const resetSpeedAction = settings.resetSpeedOnPlayerClick;
-		const resetSpeedModifier = settings.resetSpeedOnPlayerClickModifier;
-
-		const volStep = settings.volChangePerScroll ?? 5;
-		const changeVolModifier = settings.changeVolOnScrollModifier;
-		const toggleMuteAction = settings.toggleMuteOnPlayerClick;
-		const toggleMuteModifier = settings.toggleMuteOnPlayerClickModifier;
+		const clickToZoom = settings.clickToZoom;
 
 		const seekFtime = settings.seekOnScrollFtime ?? 5;
 		const seekBtime = settings.seekOnScrollBtime ?? 5;
+		const seekFtimeClick = settings.clickToSeekFtime ?? 5;
+		const seekBtimeClick = settings.clickToSeekBtime ?? 5;
 		const seekModifier = settings.seekOnScrollModifier;
+		const seekModifierClick = settings.clickToSeekModifier;
+		const seekClickAreaWidth = settings.clickToSeekClickAreaWidth ?? 0.33;
 
-		const zoomToCursor = settings.zoomToCursor != false;
+		const speedStep = settings.speedChangePerScroll ?? 0.05;
+		const speedStepClick = settings.clickToChangeSpeedStep ?? 0.05;
+		const changeSpeedModifier = settings.changeSpeedOnScrollModifier;
+		const changeSpeedModifierClick = settings.clickToChangeSpeedModifier;
+		const resetSpeedAction = settings.resetSpeedOnPlayerClick;
+		const resetSpeedModifier = settings.resetSpeedOnPlayerClickModifier;
+		const changeSpeedClickAreaWidth = settings.clickToChangeSpeedClickAreaWidth ?? 0.33;
+		const normalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
+
+		const volStep = settings.volChangePerScroll ?? 5;
+		const volStepClick = settings.clickToChangeVolStep ?? 5;
+		const changeVolModifier = settings.changeVolOnScrollModifier;
+		const changeVolModifierClick = settings.clickToChangeVolModifier;
+		const toggleMuteAction = settings.toggleMuteOnPlayerClick;
+		const toggleMuteModifier = settings.toggleMuteOnPlayerClickModifier;
+		const changeVolClickAreaWidth = settings.clickToChangeVolClickAreaWidth ?? 0.33;
+
 		const zoomStep = settings.zoomChangePerScroll ?? 0.5;
+		const zoomStepClick = settings.clickToZoomStep ?? 0.5;
 		const zoomModifier = settings.zoomOnScrollModifier;
+		const zoomModifierClick = settings.clickToZoomModifier;
+		const zoomToCursor = settings.zoomToCursor != false;
 		const cancelZoomAction = settings.cancelZoomOnPlayerClick;
 		const cancelZoomModifier = settings.cancelZoomOnPlayerClickModifier;
+		const zoomClickAreaWidth = settings.clickToZoomClickAreaWidth ?? 0.33;
 
 		document.addEventListener('loadstart', main, true);
 
@@ -515,42 +531,46 @@ ytTweaks.tweaks.push(function (settings) {
 			}
 		}
 
-		function runFunction(e, func, modifier, clickAction) {
-			if (!modifier) {
+		function runFunction(e, func, data) {
+			if (!data.modifier) {
 				if (e.target.parentElement != e.currentTarget && e.target != e.currentTarget.video && e.target != e.currentTarget) return;
 				if (e.target.tagName == 'BUTTON') return;
 				if (e.altKey || e.shiftKey || e.ctrlKey || e.buttons) return;
 			}
 
 			else {
-				if (e[modifier] == false) return;
-				if (modifier == 1 && e.buttons != 1) return;
-				if (modifier == 2 && e.buttons != 2) return;
-				if (modifier == e.buttons) preventDefault = true;
+				if (e[data.modifier] == false) return;
+				if (data.modifier == 1 && e.buttons != 1) return;
+				if (data.modifier == 2 && e.buttons != 2) return;
+				if (data.modifier == e.buttons) preventDefault = true;
 			}
 
-			if (clickAction) {
-				if (clickAction == 'middleClick') {
+			if (data.clickAreaWidth && !getClickArea(e, data.clickAreaWidth)) return;
+
+			if (data.trigger) {
+				if (data.trigger == 'middleClick') {
 					if (e.type != 'mouseup') return;
 				}
 
-				else if (clickAction == 'rightClick') {
+				else if (data.trigger == 'rightClick') {
 					if (e.type != 'contextmenu') return;
 				}
 
 				else if (e.type != 'click') return;
 			}
 
-			e.stopImmediatePropagation();
-			e.preventDefault();
-			blockHoldFor2x(e);
-
 			// Touchpad scroll = small deltaX/deltaY
 			if (Math.abs(e.deltaX) <= 5 && Math.abs(e.deltaY) <= 5) {
 				func.throttle(e);
 			}
 
-			else func(e, clickAction);
+			else func(e, data.secondaryAction);
+
+			e.stopImmediatePropagation();
+			e.preventDefault();
+			blockHoldFor2x(e);
+
+			return true;
 		}
 
 		const ogDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'playbackRate');
@@ -589,11 +609,44 @@ ytTweaks.tweaks.push(function (settings) {
 			}
 		}
 
+		function getSumOrDifferenceClick(e, areaWidth, a, b, c) {
+			let result;
+			
+			if (getClickArea(e, areaWidth) == 'right') {
+				result = a + b;
+			}
+
+			else if (getClickArea(e, areaWidth) == 'left') {
+				result = a - (c || b);
+			}
+
+			if (result && e.type == 'click' && e.detail == 2) {
+				document.addEventListener('dblclick', function(e) {
+					e.preventDefault();
+					e.stopImmediatePropagation();
+				}, { once: true, capture: true });
+			}
+
+			return result;
+		}
+
+		function getClickArea(e, area) {
+			const playerRect = e.currentTarget.getBoundingClientRect();
+
+			if ((e.x - playerRect.x) / e.currentTarget.clientWidth >= 1 - area) {
+				return 'right';
+			}
+
+			if ((e.x - playerRect.x) / e.currentTarget.clientWidth <= area) {
+				return 'left';
+			}
+		}
+
 		function handleWheel(e) {
-			if (changeSpeedOnScroll) runFunction(e, adjustSpeed, changeSpeedModifier);
-			if (changeVolOnScroll) runFunction(e, adjustVolume, changeVolModifier);
-			if (seekOnScroll) runFunction(e, adjustTime, seekModifier);
-			if (zoomOnScroll) runFunction(e, adjustZoom, zoomModifier);
+			if (seekOnScroll) runFunction(e, adjustTime, { modifier: seekModifier });
+			if (changeSpeedOnScroll) runFunction(e, adjustSpeed, { modifier: changeSpeedModifier });
+			if (changeVolOnScroll) runFunction(e, adjustVolume, { modifier: changeVolModifier });
+			if (zoomOnScroll) runFunction(e, adjustZoom, { modifier: zoomModifier });
 		}
 
 		function handleClick(e) {
@@ -603,35 +656,96 @@ ytTweaks.tweaks.push(function (settings) {
 				preventDefault = false;
 			}
 
+			if (clickToSeek) {
+				if (runFunction(e, adjustTime, {
+					trigger: clickToSeek,
+					modifier: seekModifierClick,
+					clickAreaWidth: seekClickAreaWidth
+				})) return;
+			}
+
+			if (clickToChangeSpeed) {
+				if (runFunction(e, adjustSpeed, {
+					trigger: clickToChangeSpeed,
+					modifier: changeSpeedModifierClick,
+					clickAreaWidth: changeSpeedClickAreaWidth
+				})) return;
+			}
+
+			if (clickToChangeVol) {
+				if (runFunction(e, adjustVolume, {
+					trigger: clickToChangeVol,
+					modifier: changeVolModifierClick,
+					clickAreaWidth: changeVolClickAreaWidth
+				})) return;
+			}
+
+			if (clickToZoom) {
+				if (runFunction(e, adjustZoom, {
+					trigger: clickToZoom,
+					modifier: zoomModifierClick,
+					clickAreaWidth: zoomClickAreaWidth
+				})) return;
+			}
+
 			if (changeSpeedOnScroll && resetSpeedAction) {
-				runFunction(e, adjustSpeed, resetSpeedModifier, resetSpeedAction);
+				runFunction(e, adjustSpeed, {
+					trigger: resetSpeedAction,
+					modifier: resetSpeedModifier,
+					secondaryAction: true
+				});
 			}
 
 			if (changeVolOnScroll && toggleMuteAction) {
-				runFunction(e, adjustVolume, toggleMuteModifier, toggleMuteAction);
+				runFunction(e, adjustVolume, {
+					trigger: toggleMuteAction,
+					modifier: toggleMuteModifier,
+					secondaryAction: true
+				});
 			}
 
 			if (zoomOnScroll && cancelZoomAction && e.currentTarget.video.dragMode) {
-				runFunction(e, adjustZoom, cancelZoomModifier, cancelZoomAction);
+				runFunction(e, adjustZoom, {
+					trigger: cancelZoomAction,
+					modifier: cancelZoomModifier,
+					secondaryAction: true	
+				});
 			}
 		}
 
 		function handleMousedown(e) {
 			if (e.button == 0) currSpeed = e.currentTarget.video.playbackRate;
 			else if (e.button == 1) {
-				if (changeSpeedOnScroll && resetSpeedAction == 'middleClick') {
+				if (clickToSeek) {
+					preventDefault(seekModifierClick, clickToSeek);
+				}
+
+				if (clickToChangeSpeed) {
+					preventDefault(resetSpeedModifier, clickToChangeSpeed);
+				}
+
+				if (clickToChangeVol) {
+					preventDefault(changeVolModifierClick, clickToChangeVol);
+				}
+
+				if (clickToZoom) {
+					preventDefault(zoomModifierClick, clickToZoom);
+				}
+
+				if (changeSpeedOnScroll) {
 					preventDefault(resetSpeedModifier, resetSpeedAction);
 				}
 
-				if (changeVolOnScroll && toggleMuteAction == 'middleClick') {
+				if (changeVolOnScroll) {
 					preventDefault(toggleMuteModifier, toggleMuteAction);
 				}
 
-				if (zoomOnScroll && cancelZoomAction == 'middleClick') {
+				if (zoomOnScroll) {
 					preventDefault(cancelZoomModifier, cancelZoomAction);
 				}
 
-				function preventDefault(modifier) {
+				function preventDefault(modifier, trigger) {
+					if (trigger != 'middleClick') return;
 					if (modifier == 2 && e.buttons != 6) return;
 					if (modifier == 1 && e.buttons != 5) return;
 					if (modifier && e[modifier] == false) return;
@@ -661,9 +775,11 @@ ytTweaks.tweaks.push(function (settings) {
 			player = e.currentTarget;
 			video = e.currentTarget.video;
 
-			const scale = cancel ? 1 : Math.max(getSumOrDifference(e, videoZoom.getScale(), zoomStep), 1);
+			let scale;
+			if (e.type == 'wheel') scale = Math.max(getSumOrDifference(e, videoZoom.getScale(), zoomStep), 1);
+			else scale = cancel ? 1 : Math.max(getSumOrDifferenceClick(e, zoomClickAreaWidth, videoZoom.getScale(), zoomStep), 1);
 
-			if (zoomToCursor) {
+			if (e.type == 'wheel' && zoomToCursor) {
 				const position = videoZoom.getPosition();
 				videoZoom.set(scale, { x: e.x - position.x, y: e.y - position.y });
 			}
@@ -674,7 +790,10 @@ ytTweaks.tweaks.push(function (settings) {
 		}
 
 		function adjustSpeed(e, reset) {
-			const speed = reset ? normalSpeed : Math.round(getSumOrDifference(e, e.currentTarget.video.playbackRate, speedStep) * 100) / 100;
+			let speed;
+
+			if (e.type == 'wheel') speed =  Math.round(getSumOrDifference(e, e.currentTarget.video.playbackRate, speedStep) * 100) / 100;
+			else speed = reset ? normalSpeed : Math.round(getSumOrDifferenceClick(e, changeSpeedClickAreaWidth, e.currentTarget.video.playbackRate, speedStepClick) * 100) / 100;
 
 			e.currentTarget.setPlaybackRate(speed);
 			ogDescriptor.set.call(e.currentTarget.video, speed);
@@ -702,7 +821,11 @@ ytTweaks.tweaks.push(function (settings) {
 						showFeedback('', muteIcon);
 					}
 				} else {
-					let vol = getSumOrDifference(e, e.currentTarget.getVolume(), volStep);
+					let vol;
+
+					if (e.type == 'wheel') vol = getSumOrDifference(e, e.currentTarget.getVolume(), volStep);
+					else vol = getSumOrDifferenceClick(e, changeVolClickAreaWidth, e.currentTarget.getVolume(), volStepClick);
+
 					if (vol < 0) vol = 0;
 					else if (vol > 100) vol = 100;
 
@@ -730,12 +853,19 @@ ytTweaks.tweaks.push(function (settings) {
 			let timeoutId;
 
 			return function (e) {
-				const time = getSumOrDifference(
-					e,
-					e.currentTarget.video.currentTime,
-					(seekBtime < 0 ? seekBtime : seekFtime) * e.currentTarget.video.playbackRate,
-					(seekFtime < 0 ? seekFtime : seekBtime) * e.currentTarget.video.playbackRate
-				);
+				let time;
+				if (e.type == 'wheel') {
+					time = getSumOrDifference(
+						e,
+						e.currentTarget.video.currentTime,
+						(seekBtime < 0 ? seekBtime : seekFtime) * e.currentTarget.video.playbackRate,
+						(seekFtime < 0 ? seekFtime : seekBtime) * e.currentTarget.video.playbackRate
+					);
+				}
+				
+				else {
+					time = getSumOrDifferenceClick(e, seekClickAreaWidth, e.currentTarget.video.currentTime, seekFtimeClick * e.currentTarget.video.playbackRate, seekBtimeClick * e.currentTarget.video.playbackRate);
+				}
 
 				clearTimeout(timeoutId);
 				timeoutId = setTimeout(function () {

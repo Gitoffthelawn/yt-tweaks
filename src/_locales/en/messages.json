@@ -158,6 +158,9 @@
     "toggle_auto_play": {
         "message": "Toggle auto-play"
     },
+    "width_of_click_areas": {
+        "message": "Width of click areas"
+    },
     "items_per_row": {
         "message": "Number of items per row"
     },
@@ -371,6 +374,9 @@
     "seek_video_by_scrolling_over_player": {
         "message": "Seek by scrolling over player"
     },
+    "click_left_right_to_seek_video": {
+        "message": "Click left/right side of the player to seek backward/forward"
+    },
     "forward_time": {
         "message": "Forward"
     },
@@ -440,6 +446,9 @@
     "scroll_speed_over_player": {
         "message": "Scroll speed over player"
     },
+    "click_left_right_to_change_speed": {
+        "message": "Click left/right side of the player to decrease/increase speed"
+    },
     "increase_speed": {
         "message": "Increase speed"
     },
@@ -484,6 +493,9 @@
     },
     "scroll_volume_over_player": {
         "message": "Scroll volume over player"
+    },
+    "click_left_right_to_change_volume": {
+        "message": "Click left/right side of the player to decrease/increase volume"
     },
     "toggle_mute": {
         "message": "Toggle mute/unmute"
@@ -547,6 +559,9 @@
     },
     "zoom_by_scrolling_over_player": {
         "message": "Zoom in/out by scrolling over player"
+    },
+    "click_left_right_to_zoom": {
+        "message": "Click left/right side of the player to zoom in/out"
     },
     "zoom_to_cursor": {
         "message": "Follow mouse cursor"
