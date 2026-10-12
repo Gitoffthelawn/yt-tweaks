@@ -86,6 +86,9 @@
     "navigate_to_shorts_page": {
         "message": "Zur Shorts-Seite wechseln"
     },
+    "navigate_to_wl_page": {
+        "message": "Zur Seite „Später ansehen“ wechseln"
+    },
     "set_hotkey": {
         "message": "Tastenkürzel festlegen"
     },
@@ -594,6 +597,42 @@
     "rotate_video_anti_clockwise": {
         "message": "Gegen den Uhrzeigersinn drehen"
     },
+    "video_filters": {
+        "message": "Videofilter"
+    },
+    "video_filters_button": {
+        "message": "Videofilter-Schaltfläche"
+    },
+    "toggle_video_filters": {
+        "message": "Videofilter umschalten"
+    },
+    "auto_apply_video_filters": {
+        "message": "Videofilter automatisch anwenden"
+    },
+    "hue": {
+        "message": "Farbton"
+    },
+    "saturation": {
+        "message": "Sättigung"
+    },
+    "brightness": {
+        "message": "Helligkeit"
+    },
+    "contrast": {
+        "message": "Kontrast"
+    },
+    "color_inversion": {
+        "message": "Farbumkehrung"
+    },
+    "sepia": {
+        "message": "Sepia"
+    },
+    "grayscale": {
+        "message": "Graustufen"
+    },
+    "reset": {
+        "message": "Zurücksetzen"
+    },
     "video_end_cards": {
         "message": "Abspannkarten"
     },
@@ -708,9 +747,6 @@
     "make_yt_logo_redirect_to_another_page": {
         "message": "Logo auf eine andere Seite weiterleiten lassen"
     },
-    "open_a_yt_page": {
-        "message": "Eine YouTube-Seite öffnen"
-    },
     "open_in_new_tab_button_in_search_box": {
         "message": "Schaltfläche „In neuem Tab öffnen“ zum Suchfeld hinzufügen"
     },
@@ -737,9 +773,6 @@
     },
     "use_theme_in_light_mode": {
         "message": "Dieses Design im hellen Modus verwenden"
-    },
-    "navigate_to_wl_page": {
-        "message": "Zur Seite „Später ansehen“ wechseln"
     },
     "more_animations": {
         "message": "Mehr Animationen"

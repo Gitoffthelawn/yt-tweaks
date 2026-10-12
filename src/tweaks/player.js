@@ -2786,5 +2786,253 @@ ytTweaks.tweaks.push(function (settings) {
 			video.style.translate = `${translate.x / video.clientWidth * 100}% ${translate.y / video.clientHeight * 100}%`;
 		}
 	}
+
+	if (settings.videoFiltersButton || settings.toggleVideoFiltersHotkey || settings.autoApplyVideoFilters) {
+		let filters = settings.videoFilters || {};
+
+		ytTweaks.sheet.textContent += `
+		video {
+		  filter: var(--yttw-video-filters, initial);
+		}
+
+		#yttw-video-filters-panel {
+		  color: #eee;
+		  direction: ltr;
+		  font-size: 12.1px;
+		  position: absolute;
+		  right: 12px;
+		  top: 42px;
+		  z-index: 58;
+		  background: rgba(0, 0, 0, 0.7);
+		  border-radius: 12px;
+		  padding: 8px;
+		  transition: opacity .1s cubic-bezier(.4, 0, 1, 1), visibility .1s;
+		}
+
+		:is(.yttw-sticky-player, .ytp-autohide, .ytp-player-minimized) #yttw-video-filters-panel {
+		  opacity: 0;
+		  visibility: hidden;
+		}
+
+		.yttw-video-filter {
+		  display: flex;
+		  gap: 4px;
+		  align-items: center;
+		  justify-content: flex-end;
+		}
+
+		.yttw-video-filter span {
+		  min-width: 20.23px;
+		}
+
+		#yttw-video-filters-panel button {
+		  background: transparent;
+		  font-family: inherit;
+		  font-size: inherit;
+		  color: #fff;
+		  border: none;
+		  border-radius: 17px;
+		  width: 100%;
+		  height: 22px;
+		  transition: background .1s cubic-bezier(0, 0, .2, 1);
+		  cursor: pointer;
+		}
+
+		#yttw-video-filters-panel button:hover {
+		  background: rgba(255, 255, 255, 0.1);
+		}
+
+		#yttw-video-filters-panel button:active {
+		  background: rgba(255, 255, 255, 0.2);
+		}
+
+		.yttw-video-filter input {
+		  appearance: none;
+		  left: 0;
+		  right: 0;
+		  display: flex;
+		  height: 22px;
+		  margin: 0;
+		  width: 120px;
+		  background-color: transparent;
+		  cursor: pointer;
+		}
+
+		.yttw-video-filter input::-webkit-slider-runnable-track {
+		  background: linear-gradient(to right, white var(--progress), rgba(255, 255, 255, 0.3) 0);
+		  height: 2px;
+		}
+
+		.yttw-video-filter input::-moz-range-track {
+		  background: linear-gradient(to right, white var(--progress), rgba(255, 255, 255, 0.3) 0);
+		  height: 2px;
+		}
+
+		.yttw-video-filter input::-webkit-slider-thumb {
+		  appearance: none;
+		  background: #fff;
+		  width: 12px;
+		  height: 12px;
+		  border-radius: 6px;
+		  margin-top: -5px;
+		}
+
+		.yttw-video-filter input::-moz-range-thumb {
+		  appearance: none;
+		  background: #fff;
+		  width: 12px;
+		  height: 12px;
+		  border-radius: 8px;
+		  border: none;
+		}
+		`;
+
+		const button = document.createElement('button');
+		button.hiddenControl = settings.hideVideoFiltersButton;
+		button.role = 'switch';
+		button.addEventListener('click', toggleFilters);
+		ytTweaks.getMessage('toggle_video_filters').then(function (strg) {
+			button.title = strg;
+			button.setAttribute('aria-label', strg);
+		});
+
+		const popup = document.createElement('div');
+		popup.id = 'yttw-video-filters-panel';
+		popup.insertAdjacentHTML('afterbegin', `
+		<div class="yttw-video-filter">
+		  <label for="hue-rotate" data-text="hue"></label>
+		  <input type="range" id="hue-rotate" min="0" max="360" step="1" data-default="0" value="${filters['hue-rotate'] ?? 0}" style="--progress: ${(filters['hue-rotate'] ?? 0) / 360 * 100}%">
+		  <span>${filters['hue-rotate'] ?? 0}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="saturate" data-text="saturation"></label>
+		  <input type="range" id="saturate" min="0" max="200" step="1" data-default="100" value="${filters.saturate ?? 100}" style="--progress: ${(filters.saturate ?? 100) / 200 * 100}%">
+		  <span>${filters.saturate ?? 100}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="brightness" data-text="brightness"></label>
+		  <input type="range" id="brightness" min="0" max="200" step="1" data-default="100" value="${filters.brightness ?? 100}" style="--progress: ${(filters.brightness ?? 100) / 200 * 100}%">
+		  <span>${filters.brightness ?? 100}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="contrast" data-text="contrast"></label>
+		  <input type="range" id="contrast" min="0" max="200" step="1" data-default="100" value="${filters.contrast ?? 100}" style="--progress: ${(filters.contrast ?? 100) / 200 * 100}%">
+		  <span>${filters.contrast ?? 100}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="blur" data-text="blur"></label>
+		  <input type="range" id="blur" min="0" max="50" step="1" data-default="0" value="${filters.blur ?? 0}" style="--progress: ${(filters.blur ?? 0) / 50 * 100}%">
+		  <span>${filters.blur ?? 0}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="invert" data-text="color_inversion"></label>
+		  <input type="range" id="invert" min="0" max="100" step="1" data-default="0" value="${filters.invert ?? 0}" style="--progress: ${(filters.invert ?? 0) / 100 * 100}%">
+		  <span>${filters.invert ?? 0}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="sepia" data-text="sepia"></label>
+		  <input type="range" id="sepia" min="0" max="100" step="1" data-default="0" value="${filters.sepia ?? 0}" style="--progress: ${(filters.sepia ?? 0) / 100 * 100}%">
+		  <span>${filters.sepia ?? 0}</span>
+		</div>
+		<div class="yttw-video-filter">
+		  <label for="grayscale" data-text="grayscale"></label>
+		  <input type="range" id="grayscale" min="0" max="100" step="1" data-default="0" value="${filters.grayscale ?? 0}" style="--progress: ${(filters.grayscale ?? 0) / 100 * 100}%">
+		  <span>${filters.grayscale ?? 0}</span>
+		</div>
+		<button data-text="reset"></button>
+		`);
+
+		for (const el of popup.querySelectorAll('[data-text]')) {
+			ytTweaks.getMessage(el.dataset.text).then(function(strg) {
+				el.textContent = strg;
+			});
+		}
+
+		if (settings.videoFiltersButton) {
+			addPlayerControl(button, 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M10 4C10 7.31371 7.31371 10 4 10C7.31371 10 10 12.6863 10 16C10 12.6863 12.6863 10 16 10C12.6863 10 10 7.31371 10 4Z" stroke="%23fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 15C17.5 16.3807 16.3807 17.5 15 17.5C16.3807 17.5 17.5 18.6193 17.5 20C17.5 18.6193 18.6193 17.5 20 17.5C18.6193 17.5 17.5 16.3807 17.5 15Z" stroke="%23fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+		}
+
+		if (settings.toggleVideoFiltersHotkey) {
+			ytTweaks.getHotkeys()[settings.toggleVideoFiltersHotkey] = toggleFilters;
+		}
+
+		if (settings.autoApplyVideoFilters) applyFilters(true);
+
+		function toggleFilters() {
+			if (popup.clientWidth) {
+				popup.remove();
+				button.removeAttribute('aria-checked');
+				video.style.filter = '';
+				document.documentElement.style.removeProperty('--yttw-video-filters');
+			} else {
+				getPlayerAndVideo();
+				player.appendChild(popup);
+				button.setAttribute('aria-checked', true);
+				player.wakeUpControls();
+				applyFilters();
+			}
+		}
+
+		let timeoutId;
+		function handleInput(e) {
+			filters[e.target.id] = e.target.valueAsNumber;
+			e.target.nextElementSibling.textContent = e.target.valueAsNumber;
+			e.target.style.setProperty('--progress', e.target.valueAsNumber / e.target.max * 100 + '%');
+
+			applyFilters();			
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(saveSettings, 1000);
+		}
+
+		function applyFilters(auto) {
+			let strg = '';
+
+			if ('hue-rotate' in filters) strg += `hue-rotate(${filters['hue-rotate']}deg)`;
+			if ('saturate' in filters) strg += `saturate(${filters.saturate}%)`;
+			if ('brightness' in filters) strg += `brightness(${filters.brightness}%)`;
+			if ('contrast' in filters) strg += `contrast(${filters.contrast}%)`;
+			if ('blur' in filters) strg += `blur(${filters.blur}px)`;
+			if ('invert' in filters) strg += `invert(${filters.invert}%)`;
+			if ('sepia' in filters) strg += `sepia(${filters.sepia}%)`;
+			if ('grayscale' in filters) strg += `grayscale(${filters.grayscale}%)`;
+
+			auto ? document.documentElement.style.setProperty('--yttw-video-filters', strg) : video.style.filter = strg;
+		}
+
+		popup.addEventListener('input', handleInput);
+
+		popup.addEventListener('keydown', function(e) {
+			e.stopPropagation();
+			player.wakeUpControls();
+		});
+
+		popup.lastElementChild.addEventListener('click', function(e) {
+			filters = {};
+			video.style.filter = '';
+			document.documentElement.style.removeProperty('--yttw-video-filters');
+			for (const input of popup.querySelectorAll('input')) {
+				input.value = input.dataset.default;
+				input.nextElementSibling.textContent = input.value;
+				input.style.setProperty('--progress', input.value / input.max * 100 + '%');
+			}
+			saveSettings();
+		});
+
+		function saveSettings() {
+			document.dispatchEvent(new CustomEvent('yttwSaveSetting', {
+				detail: {
+					videoFilters: filters
+				}
+			}));
+		}
+
+		ytTweaks.videoFilters = {
+			storageChanged() {
+				button.remove();
+				popup.remove();
+				if (video) video.style.filter = '';
+			},
+		};
+	}
 });
 })();
