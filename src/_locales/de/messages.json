@@ -254,7 +254,7 @@
     "always_show_progress_bar": {
         "message": "Fortschrittsbalken immer anzeigen"
     },
-    "pinned_to_the_bottom": {
+    "pinned_progress_bar": {
         "message": "Am unteren Rand fixiert"
     },
     "outside_the_player": {
@@ -398,6 +398,12 @@
     "mouse_wheel_dir_tip": {
         "message": "Negative Zahl = umgekehrte Mausradrichtung"
     },
+    "seek_video_forward_button": {
+        "message": "Schaltfläche „Vorspulen“"
+    },
+    "seek_video_backward_button": {
+        "message": "Schaltfläche „Zurückspulen“"
+    },
     "seek_video_forward": {
         "message": "Vorspulen"
     },
@@ -443,6 +449,15 @@
     },
     "scroll_speed_over_player": {
         "message": "Geschwindigkeit per Mausrad über dem Player ändern"
+    },
+    "increase_speed_button": {
+        "message": "Schaltfläche „Geschwindigkeit erhöhen“"
+    },
+    "decrease_speed_button": {
+        "message": "Schaltfläche „Geschwindigkeit verringern“"
+    },
+    "normal_speed_button": {
+        "message": "Schaltfläche „normale Geschwindigkeit“"
     },
     "increase_speed": {
         "message": "Geschwindigkeit erhöhen"
@@ -554,6 +569,15 @@
     },
     "cancel_zoom": {
         "message": "Zoom abbrechen"
+    },
+    "zoom_in_button": {
+        "message": "Schaltfläche „Hineinzoomen“"
+    },
+    "zoom_out_button": {
+        "message": "Schaltfläche „Herauszoomen“"
+    },
+    "cancel_zoom_button": {
+        "message": "Schaltfläche „Zoom abbrechen“"
     },
     "zoom_in": {
         "message": "Hineinzoomen"

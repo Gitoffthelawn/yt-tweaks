@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Calendar Versioning](https://calver.org/).
 
+## v2026.10.15
+## New
+- Video filters feature
+- Video player: 'Seek forward button' and 'Seek backward button' options
+- Video player: 'Increase speed button', 'Dcrease speed button' and 'Normal speed button' options
+- Video player: 'Zoom in button', 'Zoom out button' and 'Cancel zoom button' options
+- Video player: Options for hiding added buttons
+- German localization support by @NoXPhasma
+
 ## v2026.9.8
 ## New
 - Added pt-BR localization support

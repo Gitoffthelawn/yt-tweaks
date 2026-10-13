@@ -254,7 +254,7 @@
     "always_show_progress_bar": {
         "message": "Always show progress bar"
     },
-    "pinned_to_the_bottom": {
+    "pinned_progress_bar": {
         "message": "Pinned to the bottom"
     },
     "outside_the_player": {
@@ -398,6 +398,12 @@
     "mouse_wheel_dir_tip": {
         "message": "Negative number = reversed mouse wheel direction"
     },
+    "seek_video_forward_button": {
+        "message": "Seek forward button"
+    },
+    "seek_video_backward_button": {
+        "message": "Seek backward button"
+    },
     "seek_video_forward": {
         "message": "Seek forward"
     },
@@ -443,6 +449,15 @@
     },
     "scroll_speed_over_player": {
         "message": "Scroll speed over player"
+    },
+    "increase_speed_button": {
+        "message": "Increase speed button"
+    },
+    "decrease_speed_button": {
+        "message": "Decrease speed button"
+    },
+    "normal_speed_button": {
+        "message": "Normal speed button"
     },
     "increase_speed": {
         "message": "Increase speed"
@@ -554,6 +569,15 @@
     },
     "cancel_zoom": {
         "message": "Cancel zoom"
+    },
+    "zoom_in_button": {
+        "message": "Zoom in button"
+    },
+    "zoom_out_button": {
+        "message": "Zoom out button"
+    },
+    "cancel_zoom_button": {
+        "message": "Cancel zoom button"
     },
     "zoom_in": {
         "message": "Zoom in"

@@ -136,7 +136,7 @@
   </label>
   <div class="expandable">
     <label>
-      <span data-text="pinned_to_the_bottom"></span>
+      <span data-text="pinned_progress_bar"></span>
       <input type="checkbox" id="keepProgBarAtBottom">
     </label>
     <label>
@@ -218,6 +218,10 @@
           <li value="both" data-text="file_and_clipboard"></li>
         </ul>
       </button>
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideSnapshotButton">
     </label>
   </div>
   <label>
@@ -345,6 +349,34 @@
     </label>
   </div>
   <label>
+    <span data-text="seek_video_forward_button"></span>
+    <input type="checkbox" id="seekFbutton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="forward_time">(<span data-text="seconds"></span>)</span>
+      <input is="number-box" id="seekFbuttonFtime" step="1" value="5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideSeekFbutton">
+    </label>
+  </div>
+  <label>
+    <span data-text="seek_video_backward_button"></span>
+    <input type="checkbox" id="seekBbutton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="backward_time">(<span data-text="seconds"></span>)</span>
+      <input is="number-box" id="seekBbuttonBtime" step="1" value="5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideSeekBbutton">
+    </label>
+  </div>
+  <label>
     <span data-text="seek_video_forward"></span>
     <button is="list-button" listType="hotkey+number" number-value="3" number-title="seconds" number-min="0"
       number-step="1" id="seekFhotkeys">
@@ -439,9 +471,43 @@
     </div>
   </div>
   <label>
-    <span data-text="numbers_then_shift"><span class="subLabel" data-text="numbers_then_shift_option_sub_label"></span></span>
-    <input type="checkbox" id="numbersThenShift">
+    <span data-text="increase_speed_button"></span>
+    <input type="checkbox" id="increaseSpeedButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="step">(x)</span>
+      <input is="number-box" id="incrSpeedButtonStepSize" step="0.01" value="0.5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideIncrSpeedButton">
+    </label>
+  </div>
+  <label>
+    <span data-text="decrease_speed_button"></span>
+    <input type="checkbox" id="decreaseSpeedButton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="step">(x)</span>
+      <input is="number-box" id="decrSpeedButtonStepSize" step="0.01" value="0.5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideDecrSpeedButton">
+    </label>
+  </div>
+  <label>
+    <span data-text="normal_speed_button"></span>
+    <input type="checkbox" id="normalSpeedButton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideNormalSpeedButton">
+    </label>
+  </div>
   <label>
     <span data-text="increase_speed"></span>
     <button is="list-button" listType="hotkey+number" number-value="0.05" number-title="step"
@@ -466,6 +532,10 @@
     </button>
   </label>
   <label>
+    <span data-text="numbers_then_shift"><span class="subLabel" data-text="numbers_then_shift_option_sub_label"></span></span>
+    <input type="checkbox" id="numbersThenShift">
+  </label>
+  <label>
     <span data-text="saved_per_channel_speeds"></span>
     <button is="list-button" listType="text+number" enablesearch number-placeholder="1.5" number-title="speed"
       number-min="0" number-step="0.05" text-placeholder="channel_name" text-title="exact_match"
@@ -476,6 +546,12 @@
     <span data-text="channel_speed_button"></span>
     <input type="checkbox" id="channelSpeedButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideChannelSpeedButton">
+    </label>
+  </div>
   <label>
     <span data-text="set_channel_speed"></span>
     <button is="set-hotkey" id="setChannelSpeedHotkey">
@@ -566,6 +642,12 @@
     <span data-text="mono_audio_button"></span>
     <input type="checkbox" id="monoAudioButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideMonoAudioButton">
+    </label>
+  </div>
   <label>
     <span data-text="toggle_mono_audio"></span>
     <button is="set-hotkey" id="toggleMonoAudioHotkey">
@@ -683,6 +765,44 @@
     </label>
   </div>
   <label>
+    <span data-text="zoom_in_button"></span>
+    <input type="checkbox" id="zoomInButton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="step">(x)</span>
+      <input is="number-box" id="zoomInButtonStepSize" step="0.1" value="0.5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideZoomInButton">
+    </label>
+  </div>
+  <label>
+    <span data-text="zoom_out_button"></span>
+    <input type="checkbox" id="zoomOutButton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="step">(x)</span>
+      <input is="number-box" id="zoomOutButtonStepSize" step="0.1" value="0.5">
+    </label>
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideZoomOutButton">
+    </label>
+  </div>
+  <label>
+    <span data-text="cancel_zoom_button"></span>
+    <input type="checkbox" id="cancelZoomButton">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideCancelZoomButton">
+    </label>
+  </div>
+  <label>
     <span data-text="zoom_in"></span>
     <button is="list-button" listType="hotkey+number" number-value="0.5" number-title="step" number-min="0"
       number-step="0.10" id="zoomInHotkeys">
@@ -722,10 +842,22 @@
     <span data-text="flip_video_horizontally_button"></span>
     <input type="checkbox" id="flipHorizontallyButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideFlipHorizontallyButton">
+    </label>
+  </div>
   <label>
     <span data-text="flip_video_vertically_button"></span>
     <input type="checkbox" id="flipVerticallyButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideFlipVerticallyButton">
+    </label>
+  </div>
   <label>
     <span data-text="flip_video_horizontally"></span>
     <button is="set-hotkey" id="flipHorizontallyHotkey">
@@ -740,10 +872,22 @@
     <span data-text="rotate_video_clockwise_button"></span>
     <input type="checkbox" id="rotateButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideRotateButton">
+    </label>
+  </div>
   <label>
     <span data-text="rotate_video_anti_clockwise_button"></span>
     <input type="checkbox" id="rotateAcwButton">
   </label>
+  <div class="expandable">
+    <label>
+      <span data-text="hide"></span>
+      <input type="checkbox" id="hideRotateAcwButton">
+    </label>
+  </div>
   <label>
     <span data-text="rotate_video_clockwise"></span>
     <button is="set-hotkey" id="rotateHotkey">

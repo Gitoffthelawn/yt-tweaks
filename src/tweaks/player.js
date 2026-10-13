@@ -1,248 +1,293 @@
-(function() {
-let mainPlayer, player, video;
-
-function getPlayerAndVideo() {
-    if (!player?.clientWidth || !video?.clientWidth) {
-        for (const el of document.querySelectorAll('video')) {
-            if (el.clientWidth) {
-                video = el;
-                player = el.parentElement.parentElement;
-                break;
-            }
-        }
-    }
-}
-
-const showFeedback = function () {
-    let osd, timeoutId;
-
-    return function (strg, icon, timeoutTime) {
-        if (!osd) {
-            osd = document.createElement('div');
-            osd.id = 'yttw-feedback';
-            const style = document.createElement('style');
-            document.documentElement.appendChild(style);
-
-            style.textContent = `
-				#yttw-feedback {
-				  pointer-events: none;
-				  color: rgb(255, 255, 255);
-				  font-size: 155%;
-				  position: absolute;
-				  display: flex;
-				  box-sizing: border-box;
-				  align-items: center;
-				  gap: 6px;
-				  height: 40px;
-				  top: 10%;
-				  left: 50%;
-				  transform: translateX(-50%);
-				  opacity: 0;
-				  z-index: 999;
-				  background: rgba(0, 0, 0, 0.7);
-				  border-radius: 20px;
-				  padding: 10px 16px;
-				}
-	
-				#yttw-feedback.show {
-				  opacity: 1;
-				}
-		  
-				#yttw-feedback.showIcon:before {
-				  content: "";
-				  height: 24px;
-				  width: 24px;
-				  background-image: var(--icon);
-				  background-repeat: no-repeat no-repeat;
-				  background-position: center center;
-				  background-size: cover;
-				}`;
-        }
-
-        osd.textContent = strg;
-
-        if (icon) {
-            osd.style.setProperty('--icon', `url("${icon}")`);
-            osd.classList.add('showIcon');
-        } else {
-            osd.classList.remove('showIcon');
-        }
-
-        if (osd.parentElement != player) {
-            player.appendChild(osd);
-        }
-
-        osd.classList.add('show');
-
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(function () {
-            osd.classList.remove('show');
-        }, timeoutTime || 1000);
-    };
-}();
-
-function formatSecToDDHHMMSS(time) {
-    let days, hours, min, sec;
-
-    days = Math.floor(time / 86400);
-    hours = Math.floor((time - days * 86400) / 3600);
-    min = Math.floor((time - days * 86400 - hours * 3600) / 60);
-    sec = Math.floor(time - days * 86400 - hours * 3600 - min * 60);
-
-    return days ? days + (hours < 10 ? ':0' + hours : ':' + hours) + (min < 10 ? ':0' + min : ':' + min) + (sec < 10 ? ':0' + sec : ':' + sec) : hours ? hours + (min < 10 ? ':0' + min : ':' + min) + (sec < 10 ? ':0' + sec : ':' + sec) : min + (sec < 10 ? ':0' + sec : ':' + sec);
-}
-
-const videoZoom = function () {
-    let mousedownX, mousedownY, dragged;
-
-    function drag(e) {
-        if (e.buttons == 1) {
-            dragged = true;
-            video.style['transition-duration'] = '0s';
-
-            const translate = videoZoom.getTranslate();
-            translate.x += e.x - mousedownX;
-            translate.y += e.y - mousedownY;
-            videoZoom.correctPosition(videoZoom.getScale(), translate);
-
-            mousedownX = e.x;
-            mousedownY = e.y;
-
-            video.style.translate = `${(translate.x / video.clientWidth) * 100}% ${(translate.y / video.clientHeight) * 100}%`;
-        }
-    }
-
-    function toggleDragMode(boolean) {
-        video.dragMode = boolean;
-        method = boolean ? 'addEventListener' : 'removeEventListener';
-
-        video[method]('pointermove', drag);
-        video[method]('pointerdown', lmbPressed);
-        document[method]('click', dragStopped, true);
-    }
-
-    function lmbPressed(e) {
-        if (e.button == 0) {
-            video.setPointerCapture(e.pointerId);
-            mousedownX = e.x;
-            mousedownY = e.y;
-        }
-    }
-
-    function dragStopped(e) {
-        if (dragged) {
-            dragged = false;
-
-            video.style['transition-duration'] = '0.3s';
-
-            e.preventDefault(e);
-            e.stopImmediatePropagation();
-        }
-    }
-
-    return {
-        set(scale, origin) {
-            const width = video.clientWidth * videoZoom.getScale();
-            const height = video.clientHeight * videoZoom.getScale();
-
-            const originRelativeX = origin.x / width;
-            const originRelativeY = origin.y / height;
-
-            const translate = videoZoom.getTranslate();
-            translate.x = +(translate.x - originRelativeX * (video.clientWidth * scale - width)).toFixed(4);
-            translate.y = +(translate.y - originRelativeY * (video.clientHeight * scale - height)).toFixed(4);
-            videoZoom.correctPosition(scale, translate);
-
-            video.style.rotate = '';
-            video.style['transition-duration'] = '0.3s';
-            video.style['transition-property'] = 'translate, scale';
-            video.style.transformOrigin = '0 0';
-            video.style.translate = `${(translate.x / video.clientWidth) * 100}% ${(translate.y / video.clientHeight) * 100}%`;
-            video.style.scale = scale;
-
-            if (scale == 1) toggleDragMode(false);
-            else if (!video.dragMode) toggleDragMode(true);
-        },
-        correctPosition(scale, translate) {
-            if (translate.x > 0) {
-                translate.x = 0;
-            }
-            if (translate.y > 0) {
-                translate.y = 0;
-            }
-            if (translate.x + video.clientWidth * scale < video.clientWidth) {
-                translate.x += +(video.clientWidth - (translate.x + video.clientWidth * scale)).toFixed(4);
-            }
-            if (translate.y + video.clientHeight * scale < video.clientHeight) {
-                translate.y += +(video.clientHeight - (translate.y + video.clientHeight * scale)).toFixed(4);
-            }
-        },
-        getTranslate() {
-            const translate = video.style.translate.match(/\-?\d*\.?\d+/g) || [0, 0];
-            return {
-                x: (+translate[0] / 100) * video.clientWidth,
-                y: ((+translate[1] || 0) / 100) * video.clientHeight,
-            };
-        },
-        getScale() {
-            return +video.style.scale || 1;
-        },
-        getPosition() {
-            const rect = player.getBoundingClientRect();
-            const ogX = rect.x + (player.clientWidth - video.clientWidth) / 2;
-            const ogY = rect.y + (player.clientHeight - video.clientHeight) / 2;
-            const translate = videoZoom.getTranslate();
-
-            return {
-                x: ogX + translate.x,
-                y: ogY + translate.y,
-            };
-        },
-    };
-}();
-
-function overwriteStorageSetItem() {
-    overwriteStorageSetItem = ytTweaks.noop;
-
-    const store = Storage.prototype.setItem;
-
-    Storage.prototype.setItem = function () {
-        ytTweaks.videoQuality?.handleManuallySetQuality(arguments);
-		ytTweaks.videoSpeed?.handleManuallySetSpeed(arguments);
-
-        store.apply(this, arguments);
-    };
-}
-
-const addButtonToPlayer = function () {
-    let fragment;
-
-    return function (button, icon) {
-        if (!fragment) {
-            fragment = document.createDocumentFragment();
-            document.addEventListener('loadstart', insert, true);
-
-            function insert() {
-                if (mainPlayer || (mainPlayer = document.getElementById('movie_player'))) {
-                    document.removeEventListener('loadstart', insert, true);
-                    mainPlayer.querySelector('.ytp-right-controls').prepend(fragment);
-                    fragment = '';
-                }
-            }
-        }
-
-		const img = document.createElement('img');
-		img.style = 'display: block; margin: auto; height: 60%';
-		img.src = icon;
-		button.classList.add('ytp-button');
-		button.style['vertical-align'] = 'top';
-		button.appendChild(img);
-
-        fragment.append(button);
-    };
-}();
-	
 ytTweaks.tweaks.push(function (settings) {
+	let mainPlayer, player, video;
+	const normalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
+
+	function getPlayerAndVideo() {
+		if (!player?.clientWidth || !video?.clientWidth) {
+			for (const el of document.querySelectorAll('video')) {
+				if (el.clientWidth) {
+					video = el;
+					player = el.parentElement.parentElement;
+					break;
+				}
+			}
+		}
+	}
+
+	const showFeedback = function () {
+		let osd, timeoutId;
+
+		return function (strg, icon, timeoutTime) {
+			if (!osd) {
+				osd = document.createElement('div');
+				osd.id = 'yttw-feedback';
+				osd.style = `
+				pointer-events: none;
+				color: rgb(255, 255, 255);
+				font-size: 155%;
+				position: absolute;
+				display: flex;
+				box-sizing: border-box;
+				align-items: center;
+				gap: 6px;
+				height: 40px;
+				top: 10%;
+				left: 50%;
+				transform: translateX(-50%);
+				opacity: 0;
+				z-index: 999;
+				background: rgba(0, 0, 0, 0.7);
+				border-radius: 20px;
+				padding: 10px 16px;
+				transition: opacity 0.1s cubic-bezier(0, 0, .2, 1);
+				`;
+			}
+
+			osd.textContent = strg;
+			if (icon) osd.insertAdjacentHTML('afterbegin', icon);
+			if (osd.parentElement != player) {
+				player.appendChild(osd);
+				osd.clientWidth;
+			}
+
+			osd.style.opacity = 1;
+
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(function () {
+				osd.style.opacity = 0;
+			}, timeoutTime || 1000);
+		};
+	}();
+
+	function formatSecToDDHHMMSS(time) {
+		let days, hours, min, sec;
+
+		days = Math.floor(time / 86400);
+		hours = Math.floor((time - days * 86400) / 3600);
+		min = Math.floor((time - days * 86400 - hours * 3600) / 60);
+		sec = Math.floor(time - days * 86400 - hours * 3600 - min * 60);
+
+		return days ? days + (hours < 10 ? ':0' + hours : ':' + hours) + (min < 10 ? ':0' + min : ':' + min) + (sec < 10 ? ':0' + sec : ':' + sec) : hours ? hours + (min < 10 ? ':0' + min : ':' + min) + (sec < 10 ? ':0' + sec : ':' + sec) : min + (sec < 10 ? ':0' + sec : ':' + sec);
+	}
+
+	const videoZoom = function() {
+	    let mousedownX, mousedownY, dragged;
+
+	    function drag(e) {
+	        if (e.buttons == 1) {
+	            dragged = true;
+	            video.style['transition-duration'] = '0s';
+
+	            const translate = videoZoom.getTranslate();
+	            translate.x += e.x - mousedownX;
+	            translate.y += e.y - mousedownY;
+	            videoZoom.correctPosition(videoZoom.getScale(), translate);
+
+	            mousedownX = e.x;
+	            mousedownY = e.y;
+
+	            video.style.translate = `${(translate.x / video.clientWidth) * 100}% ${(translate.y / video.clientHeight) * 100}%`;
+	        }
+	    }
+
+	    function toggleDragMode(boolean) {
+	        video.dragMode = boolean;
+	        method = boolean ? 'addEventListener' : 'removeEventListener';
+
+	        video[method]('pointermove', drag);
+	        video[method]('pointerdown', lmbPressed);
+	        document[method]('click', dragStopped, true);
+	    }
+
+	    function lmbPressed(e) {
+	        if (e.button == 0) {
+	            video.setPointerCapture(e.pointerId);
+	            mousedownX = e.x;
+	            mousedownY = e.y;
+	        }
+	    }
+
+	    function dragStopped(e) {
+	        if (dragged) {
+	            dragged = false;
+
+	            video.style['transition-duration'] = '0.3s';
+
+	            e.preventDefault(e);
+	            e.stopImmediatePropagation();
+	        }
+	    }
+
+	    return {
+	        set(scale, origin) {
+	            const width = video.clientWidth * videoZoom.getScale();
+	            const height = video.clientHeight * videoZoom.getScale();
+
+	            const originRelativeX = origin.x / width;
+	            const originRelativeY = origin.y / height;
+
+	            const translate = videoZoom.getTranslate();
+	            translate.x = +(translate.x - originRelativeX * (video.clientWidth * scale - width)).toFixed(4);
+	            translate.y = +(translate.y - originRelativeY * (video.clientHeight * scale - height)).toFixed(4);
+	            videoZoom.correctPosition(scale, translate);
+
+	            video.style.rotate = '';
+	            video.style['transition-duration'] = '0.3s';
+	            video.style['transition-property'] = 'translate, scale';
+	            video.style.transformOrigin = '0 0';
+	            video.style.translate = `${(translate.x / video.clientWidth) * 100}% ${(translate.y / video.clientHeight) * 100}%`;
+	            video.style.scale = scale;
+
+	            if (scale == 1) toggleDragMode(false);
+	            else if (!video.dragMode) toggleDragMode(true);
+	        },
+	        correctPosition(scale, translate) {
+	            if (translate.x > 0) {
+	                translate.x = 0;
+	            }
+	            if (translate.y > 0) {
+	                translate.y = 0;
+	            }
+	            if (translate.x + video.clientWidth * scale < video.clientWidth) {
+	                translate.x += +(video.clientWidth - (translate.x + video.clientWidth * scale)).toFixed(4);
+	            }
+	            if (translate.y + video.clientHeight * scale < video.clientHeight) {
+	                translate.y += +(video.clientHeight - (translate.y + video.clientHeight * scale)).toFixed(4);
+	            }
+	        },
+	        getTranslate() {
+	            const translate = video.style.translate.match(/\-?\d*\.?\d+/g) || [0, 0];
+	            return {
+	                x: (+translate[0] / 100) * video.clientWidth,
+	                y: ((+translate[1] || 0) / 100) * video.clientHeight,
+	            };
+	        },
+	        getScale() {
+	            return +video.style.scale || 1;
+	        },
+	        getPosition() {
+	            const rect = player.getBoundingClientRect();
+	            const ogX = rect.x + (player.clientWidth - video.clientWidth) / 2;
+	            const ogY = rect.y + (player.clientHeight - video.clientHeight) / 2;
+	            const translate = videoZoom.getTranslate();
+
+	            return {
+	                x: ogX + translate.x,
+	                y: ogY + translate.y,
+	            };
+	        },
+	    };
+	}();
+
+	function overwriteStorageSetItem() {
+	    overwriteStorageSetItem = ytTweaks.noop;
+
+	    const store = Storage.prototype.setItem;
+
+	    Storage.prototype.setItem = function() {
+	        ytTweaks.videoQuality?.handleManuallySetQuality(arguments);
+	        ytTweaks.videoSpeed?.handleManuallySetSpeed(arguments);
+
+	        store.apply(this, arguments);
+	    };
+	}
+
+	const addPlayerControl = function() {
+	    let visibleControls, hiddenControls, hasRun;
+
+	    return function(button, icon, hidden) {
+	        if (!hasRun) {
+	            visibleControls = document.createDocumentFragment();
+	            hiddenControls = document.createDocumentFragment();
+	            document.addEventListener('loadstart', addControls, true);
+	            hasRun = true;
+	        }
+
+	        button.classList.add('ytp-button');
+			button.insertAdjacentHTML('afterbegin', icon);
+	        (hidden ? hiddenControls : visibleControls).append(button);
+	    };
+
+	    function addControls() {
+	        if (mainPlayer || (mainPlayer = document.getElementById('movie_player'))) {
+	            document.removeEventListener('loadstart', addControls, true);
+
+	            const rcontrols = mainPlayer.querySelector('.ytp-right-controls');
+	            if (hiddenControls.children.length) addRevealButton();
+	            rcontrols.prepend(visibleControls);
+
+	            hasRun = false;
+	        }
+	    }
+
+	    function addRevealButton() {
+			ytTweaks.sheet.textContent += `
+			#yttw-hidden-controls {
+			  display: flex;
+			  flex-wrap: wrap;
+			  position: absolute;
+			  padding: 0 4px;
+			  visibility: hidden;
+			  opacity: 0;
+			  background: rgba(0, 0, 0, 0.6);
+			  border-radius: 28px;
+			  transition: opacity 0.1s cubic-bezier(0, 0, .2, 1), visibility 0.1s;
+			}
+
+			#movie_player.ytp-xsmall-width-mode #yttw-hidden-controls > button {
+			  height: 32px;
+			}
+
+			#yttw-hidden-controls > button {
+			  height: 40px;
+			}
+			`;
+
+	        const button = document.createElement('button');
+	        button.classList.add('ytp-button');
+	        button.insertAdjacentHTML('afterbegin', '<svg xmlns="http://www.w3.org/2000/svg" fill="none" height="24" viewBox="0 0 24 24" width="24"><g filter="url(#filter0_d_3104_799356)"><path d="M5.29 15.20C4.92 14.84 4.90 14.26 5.22 13.86L5.29 13.79L11.99 7.08L18.70 13.79C19.09 14.18 19.09 14.81 18.70 15.20C18.31 15.59 17.68 15.59 17.29 15.20L11.99 9.91L6.70 15.20L6.63 15.27C6.23 15.59 5.65 15.57 5.29 15.20Z" fill="white"/></g><defs><filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="26" width="26" x="-1" y="-1"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset/><feGaussianBlur stdDeviation="0.5"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.8 0"/><feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow_3104_799356"/><feBlend in="SourceGraphic" in2="effect1_dropShadow_3104_799356" mode="normal" result="shape"/></filter></defs></svg>');
+	        button.addEventListener('mouseenter', toggleMenu);
+	        button.addEventListener('click', toggleMenu);
+
+	        const menu = document.createElement('div');
+	        menu.id = 'yttw-hidden-controls';
+	        menu.appendChild(hiddenControls);
+
+	        visibleControls.prepend(button, menu);
+
+	        function toggleMenu(e) {
+	            const playerRect = mainPlayer.getBoundingClientRect();
+	            const menuRect = menu.getBoundingClientRect();
+	            const buttonRect = button.getBoundingClientRect();
+
+	            if (e.type == 'mousemove' && e.y >= menuRect.y && e.y <= buttonRect.y + button.clientHeight) return;
+
+	            menu.style.left = 0;
+	            let left = buttonRect.x - playerRect.x - 12;
+	            left -= left + menu.clientWidth / 2 - (buttonRect.x - playerRect.x - 12 + button.clientWidth / 2);
+
+	            if (left + 12 + menu.clientWidth > mainPlayer.clientWidth) {
+	                menu.style.left = left - (left + 12 + menu.clientWidth - mainPlayer.clientWidth) - 12 + 'px';
+	            } else if (left >= 0) {
+	                menu.style.left = left + 'px';
+	            }
+
+	            const isOpen = menu.style.visibility == 'visible';
+	            menu.style.top = -menu.clientHeight - 12 + 'px';
+	            menu.style.visibility = isOpen ? 'hidden' : 'visible';
+	            menu.style.opacity = isOpen ? 0 : 1;
+	            document[isOpen ? 'removeEventListener' : 'addEventListener']('mousemove', toggleMenu);
+	        }
+
+	        ytTweaks.revealButton = {
+	            storageChanged() {
+	                button.remove();
+	                menu.remove();
+	            },
+	        };
+	    }
+	}();
+
 	if (settings.videoQuality) {
 		const qualities = {
 			tiny: 0,
@@ -337,110 +382,6 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
-	if (settings.videoSpeed || settings.channelSpeedButton || settings.setChannelSpeedHotkey || settings.perChannelSpeeds) {
-		let author, setSpeed, lastSpeedSet, globalSpeed, speeds;
-
-		try {
-			globalSpeed = +sessionStorage.getItem('yttwGlobalSpeed');
-			overwriteStorageSetItem();
-			setSpeed = function (e) {
-				video = e.target;
-				player = video.parentElement.parentElement;
-				author = navigator.mediaSession.metadata.artist;
-
-				if (player.className.includes('ad-showing') || !player.className.includes('unstarted-mode')) return;
-
-				if (speeds[author]) {
-					player.setPlaybackRate(speeds[author]);
-					video.playbackRate = speeds[author];
-				}
-
-				else if (video.playbackRate != globalSpeed) {
-					player.setPlaybackRate(globalSpeed);
-					video.playbackRate = globalSpeed;
-				}
-			}
-		}
-		// User has the storage API disabled
-		catch {
-			setSpeed = function (e) {
-				video = e.target;
-				player = e.target.parentElement.parentElement;
-				author = navigator.mediaSession.metadata.artist;
-
-				if (player.className.includes('ad-showing') || !player.className.includes('unstarted-mode')) return;
-
-				if (speeds[author]) {
-					player.setPlaybackRate(speeds[author]);
-					lastSpeedSet = player.getPlaybackRate();
-					e.target.playbackRate = speeds[author];
-				}
-
-				else if (settings.videoSpeed) {
-					player.setPlaybackRate(globalSpeed);
-					e.target.playbackRate = globalSpeed;
-				}
-
-				else if (e.target.playbackRate == lastSpeedSet) {
-					player.setPlaybackRate(1);
-				}
-			}
-		}
-
-		if (!globalSpeed) globalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
-		speeds = settings.perChannelSpeeds || {};
-
-		document.addEventListener('loadstart', setSpeed, true);
-
-		const speedButton = document.createElement('button');
-		speedButton.addEventListener('click', handleSpeedSetting);
-		ytTweaks.getMessage('set_channel_speed').then(function (strg) {
-			speedButton.title = strg;
-			speedButton.setAttribute('aria-label', strg);
-		});
-
-		if (settings.channelSpeedButton) addButtonToPlayer(speedButton, "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='M12 1c1.44 0 2.87.28 4.21.83a11 11 0 0 1 3.45 2.27l-1.81 1.05A9 9 0 0 0 3 12a9 9 0 0 0 18-.00l-.01-.44a8.99 8.99 0 0 0-.14-1.20l1.81-1.05A11.00 11.00 0 0 1 10.51 22.9 11 11 0 0 1 12 1Zm7.08 6.25-7.96 3.25a1.74 1.74 0 1 0 1.73 2.99l6.8-5.26a.57.57 0 0 0-.56-.98Z'/%3E%3C/svg%3E");
-
-		function handleSpeedSetting(e) {
-			let speed = +prompt(author, speeds[author] || '')?.replace(',', '.');
-			if (isNaN(speed)) return;
-			if (speed) {
-				player.setPlaybackRate(speed);
-				video.playbackRate = speed;
-				speeds[author] = speed;
-			} else {
-				player.setPlaybackRate(globalSpeed);
-				video.playbackRate = globalSpeed;
-				delete speeds[author];
-			}
-
-			document.dispatchEvent(new CustomEvent('yttwSaveSetting', {
-				detail: {
-					perChannelSpeeds: speeds
-				}
-			}));
-		}
-
-		if (settings.setChannelSpeedHotkey) {
-			ytTweaks.getHotkeys()[settings.setChannelSpeedHotkey] = handleSpeedSetting;
-		}
-
-		ytTweaks.videoSpeed = {
-			storageChanged() {
-				document.removeEventListener('loadstart', setSpeed, true);
-				speedButton.removeEventListener('click', handleSpeedSetting);
-				speedButton.remove();
-				delete ytTweaks.videoSpeed;
-			},
-			handleManuallySetSpeed(arg) {
-				if (arg[0] == 'yt-player-playback-rate') {
-					globalSpeed = +JSON.parse(arg[1]).data;
-					sessionStorage.setItem('yttwGlobalSpeed', globalSpeed);
-				}
-			}
-		};
-	}
-
 	if (settings.changeSpeedOnScroll || settings.changeVolOnScroll || settings.seekOnScroll || settings.zoomOnScroll) {
 		ytTweaks.sheet.textContent += `
 		.blockHoldFor2x .ytp-speedmaster-overlay {
@@ -458,8 +399,6 @@ ytTweaks.tweaks.push(function (settings) {
 		const changeVolOnScroll = settings.changeVolOnScroll;
 		const seekOnScroll = settings.seekOnScroll;
 		const zoomOnScroll = settings.zoomOnScroll;
-
-		const normalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
 
 		const speedStep = settings.speedChangePerScroll ?? 0.05;
 		const changeSpeedModifier = settings.changeSpeedOnScrollModifier;
@@ -690,7 +629,7 @@ ytTweaks.tweaks.push(function (settings) {
 		}
 		
 		const adjustVolume = function() {
-			const muteIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 0 24 24' width='24' fill='%23fff'%3E%3Cpath d='M11.60 2.08L11.48 2.14L3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87C1.26 9.77 1.00 10.79 1 11.83V12.16L1.01 12.56C1.07 13.52 1.37 14.46 1.87 15.29C2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.80 21.99 11.98 21.99C12.16 22.00 12.33 21.95 12.49 21.87C12.64 21.78 12.77 21.65 12.86 21.50C12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52C12.80 2.37 12.68 2.25 12.54 2.16C12.41 2.07 12.25 2.01 12.08 2.00C11.92 1.98 11.75 2.01 11.60 2.08ZM4.94 8.4V8.40L11 4.76V19.23L4.94 15.6C4.38 15.26 3.92 14.80 3.58 14.25C3.24 13.70 3.05 13.07 3.00 12.43L3 12.17V11.83C2.99 11.14 3.17 10.46 3.51 9.86C3.85 9.25 4.34 8.75 4.94 8.4ZM21.29 8.29L19 10.58L16.70 8.29L16.63 8.22C16.43 8.07 16.19 7.99 15.95 8.00C15.70 8.01 15.47 8.12 15.29 8.29C15.12 8.47 15.01 8.70 15.00 8.95C14.99 9.19 15.07 9.43 15.22 9.63L15.29 9.70L17.58 12L15.29 14.29C15.19 14.38 15.12 14.49 15.06 14.61C15.01 14.73 14.98 14.87 14.98 15.00C14.98 15.13 15.01 15.26 15.06 15.39C15.11 15.51 15.18 15.62 15.28 15.71C15.37 15.81 15.48 15.88 15.60 15.93C15.73 15.98 15.86 16.01 15.99 16.01C16.12 16.01 16.26 15.98 16.38 15.93C16.50 15.87 16.61 15.80 16.70 15.70L19 13.41L21.29 15.70L21.36 15.77C21.56 15.93 21.80 16.01 22.05 15.99C22.29 15.98 22.53 15.88 22.70 15.70C22.88 15.53 22.98 15.29 22.99 15.05C23.00 14.80 22.93 14.56 22.77 14.36L22.70 14.29L20.41 12L22.70 9.70C22.80 9.61 22.87 9.50 22.93 9.38C22.98 9.26 23.01 9.12 23.01 8.99C23.01 8.86 22.98 8.73 22.93 8.60C22.88 8.48 22.81 8.37 22.71 8.28C22.62 8.18 22.51 8.11 22.39 8.06C22.26 8.01 22.13 7.98 22.00 7.98C21.87 7.98 21.73 8.01 21.61 8.06C21.49 8.12 21.38 8.19 21.29 8.29Z'%3E%3C/path%3E%3C/svg%3E";
+			const muteIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="#fff"><path d="M11.60 2.08L11.48 2.14L3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87C1.26 9.77 1.00 10.79 1 11.83V12.16L1.01 12.56C1.07 13.52 1.37 14.46 1.87 15.29C2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.80 21.99 11.98 21.99C12.16 22.00 12.33 21.95 12.49 21.87C12.64 21.78 12.77 21.65 12.86 21.50C12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52C12.80 2.37 12.68 2.25 12.54 2.16C12.41 2.07 12.25 2.01 12.08 2.00C11.92 1.98 11.75 2.01 11.60 2.08ZM4.94 8.4V8.40L11 4.76V19.23L4.94 15.6C4.38 15.26 3.92 14.80 3.58 14.25C3.24 13.70 3.05 13.07 3.00 12.43L3 12.17V11.83C2.99 11.14 3.17 10.46 3.51 9.86C3.85 9.25 4.34 8.75 4.94 8.4ZM21.29 8.29L19 10.58L16.70 8.29L16.63 8.22C16.43 8.07 16.19 7.99 15.95 8.00C15.70 8.01 15.47 8.12 15.29 8.29C15.12 8.47 15.01 8.70 15.00 8.95C14.99 9.19 15.07 9.43 15.22 9.63L15.29 9.70L17.58 12L15.29 14.29C15.19 14.38 15.12 14.49 15.06 14.61C15.01 14.73 14.98 14.87 14.98 15.00C14.98 15.13 15.01 15.26 15.06 15.39C15.11 15.51 15.18 15.62 15.28 15.71C15.37 15.81 15.48 15.88 15.60 15.93C15.73 15.98 15.86 16.01 15.99 16.01C16.12 16.01 16.26 15.98 16.38 15.93C16.50 15.87 16.61 15.80 16.70 15.70L19 13.41L21.29 15.70L21.36 15.77C21.56 15.93 21.80 16.01 22.05 15.99C22.29 15.98 22.53 15.88 22.70 15.70C22.88 15.53 22.98 15.29 22.99 15.05C23.00 14.80 22.93 14.56 22.77 14.36L22.70 14.29L20.41 12L22.70 9.70C22.80 9.61 22.87 9.50 22.93 9.38C22.98 9.26 23.01 9.12 23.01 8.99C23.01 8.86 22.98 8.73 22.93 8.60C22.88 8.48 22.81 8.37 22.71 8.28C22.62 8.18 22.51 8.11 22.39 8.06C22.26 8.01 22.13 7.98 22.00 7.98C21.87 7.98 21.73 8.01 21.61 8.06C21.49 8.12 21.38 8.19 21.29 8.29Z"/></svg>';
 
 			return function(e, toggleMute) {
 				if (toggleMute) {
@@ -862,148 +801,6 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
-	if (settings.toggleVolBoost || settings.toggleVolBoostHotkey || settings.autoVolumeBoost) {
-		const level = settings.boostingLevel ?? 2;
-
-		if (settings.autoVolumeBoost) document.addEventListener('loadstart', autoEnableVolBoost, true);
-
-		if (settings.toggleVolBoostHotkey) {
-			ytTweaks.getHotkeys()[settings.toggleVolBoostHotkey] = toggleVolBoost;
-		}
-
-		if (settings.toggleVolBoost) {
-			document.addEventListener('contextmenu', toggleVolBoost, true);
-		}
-
-		function toggleVolBoost(e) {
-			if (e && !e.target.closest(':is([class*="mute"], [class*="Mute"], mute')) return;
-			getPlayerAndVideo();
-			if (!video?.clientWidth) return;
-			e?.stopImmediatePropagation();
-			e?.preventDefault();
-
-			setupVolumeBoost();
-
-			if (video.boosterGainNode.gain.value == level) {
-				video.boosterGainNode.gain.value = 1;
-				showFeedback(player.getVolume());
-				autoEnableVolBoost.canRun = false;
-
-			} else {
-				video.boosterGainNode.gain.value = level;
-				showFeedback(player.getVolume() * level);
-				autoEnableVolBoost.canRun = true;
-			}
-		}
-
-		function autoEnableVolBoost(e) {
-			if (autoEnableVolBoost.canRun == false) return;
-
-			video = e.target;
-			setupVolumeBoost();
-			video.boosterGainNode.gain.value = level;
-		}
-
-		function setupVolumeBoost() {
-			if (!video.boosterGainNode) {
-				if (!video.audioCtx) {
-					video.audioCtx = new AudioContext();
-					video.mediaSource = video.audioCtx.createMediaElementSource(video);
-				}
-
-				const gainNode = video.audioCtx.createGain();
-				video.mediaSource.connect(gainNode);
-				gainNode.connect(video.audioCtx.destination);
-				video.boosterGainNode = gainNode;
-			}
-		}
-
-		ytTweaks.volumeBoost = {
-			storageChanged() {
-				document.removeEventListener('loadstart', autoEnableVolBoost, true);
-				document.removeEventListener('contextmenu', toggleVolBoost, true);
-
-				for (const video of document.querySelectorAll('video')) {
-					if (video.boosterGainNode) video.boosterGainNode.gain.value = 1;
-				}
-			}
-		};
-	}
-
-	if (settings.monoAudioButton || settings.toggleMonoAudioHotkey) {
-		const offIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg' fill='%23000000' width='24' height='24' viewBox='0 0 20.867935 20.867937' version='1.1' id='svg1' xml:space='preserve'%3E%3Cdefs id='defs1'/%3E%3Ctext xml:space='preserve' style='font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.2507px;font-family:Corbel;-inkscape-font-specification:Corbel;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:%23ffffff;fill-opacity:1;stroke:%23ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-opacity:1' x='4.7291713' y='15.029335' id='text10' transform='scale(1.025579,0.97505897)'%3E%3Ctspan id='tspan10' style='font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Corbel;-inkscape-font-specification:Corbel;fill:%23ffffff;fill-opacity:1;stroke:%23ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-opacity:1' x='4.7291713' y='15.029335'%3EM%3C/tspan%3E%3C/text%3E%3Cellipse style='fill:none;fill-opacity:1;stroke:%23ffffff;stroke-width:1.51524;stroke-dasharray:none;stroke-opacity:1' id='path11' cx='10.433968' cy='10.433969' rx='9.6763477' ry='9.6763487'/%3E%3C/svg%3E";
-		const onIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg' fill='%23000000' width='24' height='24' viewBox='0 0 20.867935 20.867937' version='1.1' id='svg1' xml:space='preserve'%3E%3Cdefs id='defs1'/%3E%3Cpath id='path12' d='M 10.433613,0 C 4.6800652,-2.6162365e-7 -2.6162359e-7,4.6800648 0,10.433613 c 4.162193e-7,5.753548 4.6800657,10.433556 10.433613,10.433555 5.753547,0 10.433555,-4.680008 10.433555,-10.433555 C 20.867169,4.6800653 16.18716,4.1621939e-7 10.433613,0 Z M 5.5925976,5.8484765 h 2.2014258 l 2.1893555,5.0009765 c 0.1369871,0.313539 0.2989421,0.742203 0.4507031,1.125469 0.153863,-0.389105 0.330122,-0.856994 0.450703,-1.125469 l 2.189356,-5.0009765 h 2.199375 v 9.1715625 h -1.85086 v -4.446797 c 0,-0.377428 0.02656,-0.8583215 0.03609,-1.2721288 -0.0602,0.1390175 -0.127429,0.3244704 -0.186328,0.4551563 v 0.00193 L 10.938867,15.020098 H 9.9292968 L 7.5936914,9.7563281 h 0.00199 C 7.5328118,9.6154312 7.4702406,9.4431128 7.4074218,9.2973632 c 0.00964,0.4169571 0.036035,0.8891648 0.036035,1.2759378 v 4.446797 H 5.5925976 Z' style='fill:%23ffffff'/%3E%3C/svg%3E";
-
-		const button = document.createElement('button');
-		button.role = 'switch';
-		button.addEventListener('click', toggleMonoAudio);
-		ytTweaks.getMessage('toggle_mono_audio').then(function (strg) {
-			button.title = strg;
-			button.setAttribute('aria-label', strg);
-		});
-
-		if (settings.autoMono) document.addEventListener('loadstart', autoEnableMono, true);
-
-		if (settings.monoAudioButton) {
-			addButtonToPlayer(button, offIcon);
-		}
-
-		if (settings.toggleMonoAudioHotkey) {
-			ytTweaks.getHotkeys()[settings.toggleMonoAudioHotkey] = toggleMonoAudio;
-		}
-
-		function toggleMonoAudio(e) {
-			getPlayerAndVideo();
-			if (!video?.clientWidth) return;
-
-			setupMonoAudio();
-
-			if (video.audioCtx.destination.channelCount == 1) {
-				video.audioCtx.destination.channelCount = video.audioCtx.destination.maxChannelCount;
-				if (!e) showFeedback('', offIcon);
-				button.children[0].src = offIcon;
-				button.removeAttribute('aria-checked');
-				autoEnableMono.canRun = false;
-			} else {
-				video.audioCtx.destination.channelCount = 1
-				if (!e) showFeedback('', onIcon);
-				button.children[0].src = onIcon;
-				button.setAttribute('aria-checked', true);
-				autoEnableMono.canRun = true;
-			}
-		}
-
-		function autoEnableMono(e) {
-			if (autoEnableMono.canRun == false) return;
-
-			video = e.target;
-			setupMonoAudio();
-			video.audioCtx.destination.channelCount = 1;
-			button.children[0].src = onIcon;
-			button.setAttribute('aria-checked', true);
-		}
-
-		function setupMonoAudio() {
-			if (!video.audioCtx) {
-				video.audioCtx = new AudioContext();
-				video.mediaSource = video.audioCtx.createMediaElementSource(video);
-				video.mediaSource.connect(video.audioCtx.destination);
-			}
-		}
-
-		ytTweaks.monoAudio = {
-			storageChanged() {
-				document.removeEventListener('loadstart', autoEnableMono, true);
-				button.removeEventListener('click', toggleMonoAudio);
-				button.remove();
-
-				for (const video of document.querySelectorAll('video')) {
-					if (video.audioCtx) video.audioCtx.destination.channelCount = video.audioCtx.destination.maxChannelCount;
-				}
-			}
-		};
-	}
-
     if (settings.forceOgAudio) {
         let tracks, href;
         document.addEventListener('playing', setOgAudio, true);
@@ -1040,28 +837,28 @@ ytTweaks.tweaks.push(function (settings) {
 		const buttonSaveMethod = settings.snapshotButtonSaveMethod || 'file';
 		const buttonSaveMethodRc = settings.snapshotButtonSaveMethodRc || 'clipboard';
 		const subtitles = settings.snapshotWithSubtitles;
-
 		const button = document.createElement('button');
-		const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 15 15' fill='none'%3E%3Cpath d='M7 1.5L2 1.5M14.5 12.5L14.5 4.5C14.5 3.94772 14.0523 3.5 13.5 3.5L1.5 3.5C0.947717 3.5 0.500001 3.94772 0.500001 4.5L0.5 12.5C0.5 13.0523 0.947716 13.5 1.5 13.5L13.5 13.5C14.0523 13.5 14.5 13.0523 14.5 12.5ZM9.5 10.5C8.39543 10.5 7.5 9.60457 7.5 8.5C7.5 7.39543 8.39543 6.5 9.5 6.5C10.6046 6.5 11.5 7.39543 11.5 8.5C11.5 9.60457 10.6046 10.5 9.5 10.5Z' stroke='%23fff'/%3E%3C/svg%3E";
-		button.addEventListener('click', snapshotButtonClicked);
-		button.addEventListener('contextmenu', snapshotButtonClicked);
+		const icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 15 15" fill="none"><path d="M7 1.5L2 1.5M14.5 12.5L14.5 4.5C14.5 3.94772 14.0523 3.5 13.5 3.5L1.5 3.5C0.947717 3.5 0.500001 3.94772 0.500001 4.5L0.5 12.5C0.5 13.0523 0.947716 13.5 1.5 13.5L13.5 13.5C14.0523 13.5 14.5 13.0523 14.5 12.5ZM9.5 10.5C8.39543 10.5 7.5 9.60457 7.5 8.5C7.5 7.39543 8.39543 6.5 9.5 6.5C10.6046 6.5 11.5 7.39543 11.5 8.5C11.5 9.60457 10.6046 10.5 9.5 10.5Z" stroke="#fff"/></svg>';
 
-		ytTweaks.getMessage('video_snapshot').then(function (strg) {
-			button.title = strg;
-			button.setAttribute('aria-label', strg);
-		});
+		if (settings.snapshotButton) {
+			button.addEventListener('click', snapshotButtonClicked);
+			button.addEventListener('contextmenu', snapshotButtonClicked);
+			ytTweaks.getMessage('video_snapshot').then(function (strg) {
+				button.title = strg;
+				button.setAttribute('aria-label', strg);
+			});
+			addPlayerControl(button, icon, settings.hideSnapshotButton);
 
-		function snapshotButtonClicked(e) {
-			e.preventDefault();
-			e.stopImmediatePropagation();
+			function snapshotButtonClicked(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
 
-			const saveMethod = e.type == 'click' ? buttonSaveMethod : buttonSaveMethodRc;
-			if (saveMethod == 'file') takeSnapshot(true, false);
-			else if (saveMethod == 'clipboard') takeSnapshot(false, true);
-			else takeSnapshot(true, true);
+				const saveMethod = e.type == 'click' ? buttonSaveMethod : buttonSaveMethodRc;
+				if (saveMethod == 'file') takeSnapshot(true, false);
+				else if (saveMethod == 'clipboard') takeSnapshot(false, true);
+				else takeSnapshot(true, true);
+			}
 		}
-
-		if (settings.snapshotButton) addButtonToPlayer(button, icon);
 
 		if (settings.snapshotToFileHotkey) {
 			ytTweaks.getHotkeys()[settings.snapshotToFileHotkey] = function () {
@@ -1184,165 +981,6 @@ ytTweaks.tweaks.push(function (settings) {
 			storageChanged() {
 				button.remove();
 			},
-		};
-	}
-
-	if (settings.flipHorizontallyButton || settings.flipVerticallyButton || settings.flipHorizontallyHotkey || settings.flipVerticallyHotkey) {
-		const flipHorOffIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M11 3L11 21' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M20 8.2L20 8.16146C20 7.63431 20 7.17955 19.9694 6.80497C19.9371 6.40963 19.8658 6.01641 19.673 5.63803C19.3854 5.07354 18.9265 4.6146 18.362 4.32698C17.9836 4.13419 17.5904 4.06287 17.195 4.03057C16.8205 3.99997 16.3657 3.99998 15.8385 4L15.8 4L14 4L14 6L15.8 6C16.3766 6 16.7488 6.00078 17.0322 6.02393C17.3038 6.04612 17.4045 6.0838 17.454 6.10899C17.6422 6.20487 17.7951 6.35785 17.891 6.54601C17.9162 6.59545 17.9539 6.69617 17.9761 6.96784C17.9992 7.25117 18 7.62345 18 8.2L18 15.8C18 16.3766 17.9992 16.7488 17.9761 17.0322C17.9539 17.3038 17.9162 17.4045 17.891 17.454C17.7951 17.6422 17.6422 17.7951 17.454 17.891C17.4045 17.9162 17.3038 17.9539 17.0322 17.9761C16.7488 17.9992 16.3766 18 15.8 18L14 18L14 20L15.8 20L15.8385 20C16.3657 20 16.8204 20 17.195 19.9694C17.5904 19.9371 17.9836 19.8658 18.362 19.673C18.9265 19.3854 19.3854 18.9265 19.673 18.362C19.8658 17.9836 19.9371 17.5904 19.9694 17.195C20 16.8205 20 16.3657 20 15.8385L20 15.8L20 8.2ZM12 20L12 18L8.2 18C7.62344 18 7.25117 17.9992 6.96783 17.9761C6.69617 17.9539 6.59545 17.9162 6.54601 17.891C6.35785 17.7951 6.20486 17.6422 6.10899 17.454C6.0838 17.4045 6.04612 17.3038 6.02393 17.0322C6.00078 16.7488 6 16.3766 6 15.8L6 8.2C6 7.62345 6.00078 7.25117 6.02393 6.96784C6.04612 6.69617 6.0838 6.59545 6.10899 6.54601C6.20487 6.35785 6.35785 6.20487 6.54601 6.10899C6.59545 6.0838 6.69617 6.04612 6.96783 6.02393C7.25117 6.00078 7.62345 6 8.2 6L12 6L12 4L8.2 4L8.16146 4C7.63431 3.99998 7.17954 3.99997 6.80497 4.03057C6.40963 4.06287 6.01641 4.13419 5.63803 4.32698C5.07354 4.6146 4.6146 5.07354 4.32698 5.63803C4.13419 6.01641 4.06287 6.40963 4.03057 6.80497C3.99997 7.17955 3.99998 7.63432 4 8.16148L4 8.2L4 15.8L4 15.8385C3.99998 16.3657 3.99997 16.8205 4.03057 17.195C4.06287 17.5904 4.13419 17.9836 4.32698 18.362C4.6146 18.9265 5.07354 19.3854 5.63803 19.673C6.01641 19.8658 6.40963 19.9371 6.80497 19.9694C7.17955 20 7.63432 20 8.16148 20L8.2 20L12 20Z' fill='%23fff'/%3E%3C/svg%3E";
-		const flipHorOnIcon = "data:image/svg+xml,%3Csvg xmlns:inkscape='http://www.inkscape.org/namespaces/inkscape' xmlns:sodipodi='http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none' version='1.1' id='svg2' sodipodi:docname='2.svg' inkscape:version='1.4 (86a8ad7, 2024-10-11)'%3E%3Cpath d='M 10.999999,2.9999995 V 20.999999' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' id='path1'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='m 19.999999,8.1999995 v -0.03854 c 2e-5,-0.52715 3e-5,-0.98191 -0.03057,-1.35649 -0.0323,-0.39534 -0.10362,-0.78856 -0.29641,-1.16694 -0.28762,-0.56449 -0.74656,-1.02343 -1.31105,-1.31105 -0.37838,-0.19279 -0.7716,-0.26411 -1.16694,-0.29641 -0.37457,-0.0306 -0.82934,-0.03059 -1.35649,-0.03057 h -0.03854 -1.8 v 2 h 1.8 c 0.57655,0 0.94883,7.8e-4 1.23216,0.02393 0.27167,0.02219 0.37239,0.05987 0.42183,0.08506 0.18816,0.09588 0.34114,0.24886 0.43702,0.43702 0.02519,0.04944 0.06287,0.15016 0.08506,0.42183 0.02315,0.28333 0.02393,0.65561 0.02393,1.23216 v 7.5999995 c 0,0.5766 -7.8e-4,0.9488 -0.02393,1.2322 -0.02219,0.2716 -0.05987,0.3723 -0.08506,0.4218 -0.09588,0.1882 -0.24886,0.3411 -0.43702,0.437 -0.04944,0.0252 -0.15016,0.0629 -0.42183,0.0851 -0.28333,0.0231 -0.65561,0.0239 -1.23216,0.0239 h -1.8 v 2 h 1.8 0.03852 c 0.52716,0 0.98193,0 1.35651,-0.0306 0.39534,-0.0323 0.78856,-0.1036 1.16694,-0.2964 0.56449,-0.2876 1.02343,-0.7465 1.31105,-1.311 0.19279,-0.3784 0.26411,-0.7716 0.29641,-1.167 0.0306,-0.3745 0.03059,-0.8293 0.03057,-1.3565 v -0.0385 z m -8,11.7999995 v -2 H 8.1999995 c -0.5766,0 -0.9488,-8e-4 -1.2322,-0.0239 -0.2716,-0.0222 -0.3723,-0.0599 -0.4218,-0.0851 -0.1882,-0.0959 -0.3411,-0.2488 -0.437,-0.437 -0.0252,-0.0495 -0.0629,-0.1502 -0.0851,-0.4218 -0.0231,-0.2834 -0.0239,-0.6556 -0.0239,-1.2322 V 8.1999995 c 0,-0.57655 8e-4,-0.94883 0.0239,-1.23216 0.0222,-0.27167 0.0599,-0.37239 0.0851,-0.42183 0.0959,-0.18816 0.2488,-0.34114 0.437,-0.43702 0.0495,-0.02519 0.1502,-0.06287 0.4218,-0.08506 0.2834,-0.02315 0.6556,-0.02393 1.2322,-0.02393 h 3.7999995 v -2 h -3.7999995 -0.0385 c -0.5272,-2e-5 -0.982,-3e-5 -1.3565,0.03057 -0.3954,0.0323 -0.7886,0.10362 -1.167,0.29641 -0.5645,0.28762 -1.0234,0.74656 -1.311,1.31105 -0.1928,0.37838 -0.2641,0.7716 -0.2964,1.16694 -0.0306,0.37458 -0.0306,0.82935 -0.0306,1.35651 v 0.03852 7.5999995 0.0385 c 0,0.5272 0,0.982 0.0306,1.3565 0.0323,0.3954 0.1036,0.7886 0.2964,1.167 0.2876,0.5645 0.7465,1.0234 1.311,1.311 0.3784,0.1928 0.7716,0.2641 1.167,0.2964 0.3745,0.0306 0.8293,0.0306 1.3565,0.0306 h 0.0385 z' fill='%23fff' id='path2'/%3E%3Crect style='fill:%23fff;stroke-width:0.0466197' id='rect2' width='14.014849' height='4.3531132' x='4.9771724' y='-18.35318' rx='0' transform='rotate(90)'/%3E%3Crect style='fill:%23fff;stroke-width:0.0526548' id='rect2-0' width='14.014849' height='5.5531135' x='5.1161728' y='-11.064057' rx='0' transform='rotate(90)'/%3E%3C/svg%3E";
-		const flipVertOffIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M3 13H21' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M8.2 4H8.16146C7.63431 3.99998 7.17955 3.99997 6.80497 4.03057C6.40963 4.06287 6.01641 4.13419 5.63803 4.32698C5.07354 4.6146 4.6146 5.07354 4.32698 5.63803C4.13419 6.01641 4.06287 6.40963 4.03057 6.80497C3.99997 7.17954 3.99998 7.63431 4 8.16146V8.2V10H6V8.2C6 7.62345 6.00078 7.25117 6.02393 6.96784C6.04612 6.69617 6.0838 6.59545 6.10899 6.54601C6.20487 6.35785 6.35785 6.20487 6.54601 6.10899C6.59545 6.0838 6.69617 6.04612 6.96784 6.02393C7.25117 6.00078 7.62345 6 8.2 6H15.8C16.3766 6 16.7488 6.00078 17.0322 6.02393C17.3038 6.04612 17.4045 6.0838 17.454 6.10899C17.6422 6.20487 17.7951 6.35785 17.891 6.54601C17.9162 6.59545 17.9539 6.69617 17.9761 6.96784C17.9992 7.25117 18 7.62345 18 8.2V10H20V8.2V8.16148C20 7.63432 20 7.17955 19.9694 6.80497C19.9371 6.40963 19.8658 6.01641 19.673 5.63803C19.3854 5.07354 18.9265 4.6146 18.362 4.32698C17.9836 4.13419 17.5904 4.06287 17.195 4.03057C16.8205 3.99997 16.3657 3.99998 15.8385 4H15.8H8.2ZM20 12H18V15.8C18 16.3766 17.9992 16.7488 17.9761 17.0322C17.9539 17.3038 17.9162 17.4045 17.891 17.454C17.7951 17.6422 17.6422 17.7951 17.454 17.891C17.4045 17.9162 17.3038 17.9539 17.0322 17.9761C16.7488 17.9992 16.3766 18 15.8 18H8.2C7.62345 18 7.25117 17.9992 6.96784 17.9761C6.69617 17.9539 6.59545 17.9162 6.54601 17.891C6.35785 17.7951 6.20487 17.6422 6.10899 17.454C6.0838 17.4045 6.04612 17.3038 6.02393 17.0322C6.00078 16.7488 6 16.3766 6 15.8V12H4V15.8V15.8385C3.99998 16.3657 3.99997 16.8205 4.03057 17.195C4.06287 17.5904 4.13419 17.9836 4.32698 18.362C4.6146 18.9265 5.07354 19.3854 5.63803 19.673C6.01641 19.8658 6.40963 19.9371 6.80497 19.9694C7.17955 20 7.63432 20 8.16148 20H8.2H15.8H15.8385C16.3657 20 16.8205 20 17.195 19.9694C17.5904 19.9371 17.9836 19.8658 18.362 19.673C18.9265 19.3854 19.3854 18.9265 19.673 18.362C19.8658 17.9836 19.9371 17.5904 19.9694 17.195C20 16.8205 20 16.3657 20 15.8385V15.8V12Z' fill='%23fff'/%3E%3C/svg%3E";
-		const flipVertOnIcon = "data:image/svg+xml,%3Csvg xmlns:inkscape='http://www.inkscape.org/namespaces/inkscape' xmlns:sodipodi='http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none' version='1.1' id='svg2' sodipodi:docname='flip-horizontal-1-svgrepo-com (1).svg' inkscape:version='1.4 (86a8ad7, 2024-10-11)'%3E%3Cpath d='M3 13H21' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' id='path1'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M8.2 4H8.16146C7.63431 3.99998 7.17955 3.99997 6.80497 4.03057C6.40963 4.06287 6.01641 4.13419 5.63803 4.32698C5.07354 4.6146 4.6146 5.07354 4.32698 5.63803C4.13419 6.01641 4.06287 6.40963 4.03057 6.80497C3.99997 7.17954 3.99998 7.63431 4 8.16146V8.2V10H6V8.2C6 7.62345 6.00078 7.25117 6.02393 6.96784C6.04612 6.69617 6.0838 6.59545 6.10899 6.54601C6.20487 6.35785 6.35785 6.20487 6.54601 6.10899C6.59545 6.0838 6.69617 6.04612 6.96784 6.02393C7.25117 6.00078 7.62345 6 8.2 6H15.8C16.3766 6 16.7488 6.00078 17.0322 6.02393C17.3038 6.04612 17.4045 6.0838 17.454 6.10899C17.6422 6.20487 17.7951 6.35785 17.891 6.54601C17.9162 6.59545 17.9539 6.69617 17.9761 6.96784C17.9992 7.25117 18 7.62345 18 8.2V10H20V8.2V8.16148C20 7.63432 20 7.17955 19.9694 6.80497C19.9371 6.40963 19.8658 6.01641 19.673 5.63803C19.3854 5.07354 18.9265 4.6146 18.362 4.32698C17.9836 4.13419 17.5904 4.06287 17.195 4.03057C16.8205 3.99997 16.3657 3.99998 15.8385 4H15.8H8.2ZM20 12H18V15.8C18 16.3766 17.9992 16.7488 17.9761 17.0322C17.9539 17.3038 17.9162 17.4045 17.891 17.454C17.7951 17.6422 17.6422 17.7951 17.454 17.891C17.4045 17.9162 17.3038 17.9539 17.0322 17.9761C16.7488 17.9992 16.3766 18 15.8 18H8.2C7.62345 18 7.25117 17.9992 6.96784 17.9761C6.69617 17.9539 6.59545 17.9162 6.54601 17.891C6.35785 17.7951 6.20487 17.6422 6.10899 17.454C6.0838 17.4045 6.04612 17.3038 6.02393 17.0322C6.00078 16.7488 6 16.3766 6 15.8V12H4V15.8V15.8385C3.99998 16.3657 3.99997 16.8205 4.03057 17.195C4.06287 17.5904 4.13419 17.9836 4.32698 18.362C4.6146 18.9265 5.07354 19.3854 5.63803 19.673C6.01641 19.8658 6.40963 19.9371 6.80497 19.9694C7.17955 20 7.63432 20 8.16148 20H8.2H15.8H15.8385C16.3657 20 16.8205 20 17.195 19.9694C17.5904 19.9371 17.9836 19.8658 18.362 19.673C18.9265 19.3854 19.3854 18.9265 19.673 18.362C19.8658 17.9836 19.9371 17.5904 19.9694 17.195C20 16.8205 20 16.3657 20 15.8385V15.8V12Z' fill='%23fff' id='path2'/%3E%3Crect style='fill:%23fff;stroke-width:0.0466197' id='rect2' width='14.014849' height='4.3531132' x='4.9771729' y='5.6468191' rx='0'/%3E%3Crect style='fill:%23fff;stroke-width:0.0526548' id='rect2-0' width='14.014849' height='5.5531135' x='5.1161733' y='12.935942' rx='0'/%3E%3Crect style='fill:%23fff;stroke-width:0.04686' id='rect3' width='2.6039784' height='1.3019892' x='7.20434' y='7.3779387'/%3E%3C/svg%3E";
-
-		const flipHorButton = document.createElement('button');
-		const flipVerButton = document.createElement('button');
-		flipHorButton.role = 'switch';
-		flipVerButton.role = 'switch';
-
-		ytTweaks.getMessage('flip_video_horizontally').then(function (strg) {
-			flipHorButton.title = strg;
-			flipHorButton.setAttribute('aria-label', strg);
-		});
-
-		ytTweaks.getMessage('flip_video_vertically').then(function (strg) {
-			flipVerButton.title = strg;
-			flipVerButton.setAttribute('aria-label', strg);
-		});
-
-		flipHorButton.addEventListener('click', function (e) {
-			flipVideo(true, e)
-		});
-
-		flipVerButton.addEventListener('click', function (e) {
-			flipVideo(false, e);
-		});
-
-		if (settings.flipHorizontallyButton) {
-			addButtonToPlayer(flipHorButton, flipHorOffIcon);
-		}
-
-		if (settings.flipVerticallyButton) {
-			addButtonToPlayer(flipVerButton, flipVertOffIcon);
-		}
-
-		if (settings.flipHorizontallyHotkey) {
-			ytTweaks.getHotkeys()[settings.flipHorizontallyHotkey] = function () {
-				flipVideo(true);
-			};
-		}
-
-		if (settings.flipVerticallyHotkey) {
-			ytTweaks.getHotkeys()[settings.flipVerticallyHotkey] = flipVideo;
-		}
-
-		function flipVideo(horizontally, e) {
-			getPlayerAndVideo();
-
-			video.style.transition = 'scale 0.25s';
-			video.style.translate = video.style.transformOrigin = '';
-			const s = video.style.scale.match(/\d*\.?\d+/)?.[0] || 1;
-			const invert = parseInt(video.style.rotate || 0) / 90 % 2;
-
-			const horFlipped = flipHorButton.getAttribute('aria-checked') == 'true';
-			const vertFlipped = flipVerButton.getAttribute('aria-checked') == 'true';
-
-			if (horizontally) {
-				video.style.scale = horFlipped ? vertFlipped ? invert ? `${-s} ${s}` : `${s} ${-s}` : s : vertFlipped ? -s : invert ? `${s} ${-s}` : `${-s} ${s}`;
-				flipHorButton.children[0].src = horFlipped ? flipHorOffIcon : flipHorOnIcon;
-				flipHorButton.setAttribute('aria-checked', !horFlipped);
-				if (!e) showFeedback('', flipHorButton.children[0].src);
-			} else {
-				video.style.scale = vertFlipped ? horFlipped ? invert ? `${s} ${-s}` : `${-s} ${s}` : s : horFlipped ? -s : invert ? `${-s} ${s}` : `${s} ${-s}`;
-				flipVerButton.children[0].src = vertFlipped ? flipVertOffIcon : flipVertOnIcon;
-				flipVerButton.setAttribute('aria-checked', !vertFlipped);
-				if (!e) showFeedback('', flipVerButton.children[0].src);
-			}
-		}
-
-		ytTweaks.flipVideo = {
-			storageChanged() {
-				flipHorButton.remove();
-				flipVerButton.remove();
-			}
-		};
-	}
-
-	if (settings.rotateButton || settings.rotateAcwButton || settings.rotateHotkey || settings.rotateAcwHotkey) {
-		const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24'%3E%3Cpath d='M21.37,5.07a1,1,0,0,0-1.3.56l-1,2.45A9,9,0,1,0,17.75,18a1,1,0,0,0-.09-1.41,1,1,0,0,0-1.41.09,7,7,0,1,1,1.2-7.33L14.37,8.07a1,1,0,1,0-.74,1.86l5,2A1,1,0,0,0,19,12a1,1,0,0,0,.93-.63l2-5A1,1,0,0,0,21.37,5.07Z' style='fill: %23fff'/%3E%3C/svg%3E";
-
-		const rotateButton = document.createElement('button');
-		rotateButton.addEventListener('click', function () {
-			rotate(true);
-		});
-
-		const rotateAcwButton = document.createElement('button');
-		rotateAcwButton.style.scale = '-1 1';
-		rotateAcwButton.addEventListener('click', function () {
-			rotate();
-		});
-
-		ytTweaks.getMessage('rotate_video_clockwise').then(function (strg) {
-			rotateButton.title = strg;
-			rotateButton.setAttribute('aria-label', strg);
-		});
-
-		ytTweaks.getMessage('rotate_video_anti_clockwise').then(function (strg) {
-			rotateAcwButton.title = strg;
-			rotateAcwButton.setAttribute('aria-label', strg);
-		});
-
-		if (settings.rotateAcwButton) addButtonToPlayer(rotateAcwButton, icon);
-		if (settings.rotateButton) addButtonToPlayer(rotateButton, icon);
-
-		if (settings.rotateHotkey) {
-			ytTweaks.getHotkeys()[settings.rotateHotkey] = function () {
-				rotate(true);
-			};
-		}
-
-		if (settings.rotateAcwHotkey) {
-			ytTweaks.getHotkeys()[settings.rotateAcwHotkey] = rotate;
-		}
-
-		function rotate(clockwise) {
-			getPlayerAndVideo();
-
-			const r = parseInt(video.style.rotate || 0) + (clockwise ? 90 : -90);
-			video.style.transition = 'rotate 0.25s, scale 0.25s';
-			video.style.translate = video.style.transformOrigin = '';
-			video.style.rotate = r + 'deg';
-
-			if (r / 90 % 2 && video.clientWidth > player.clientHeight) {
-				video.style.scale = maintainMirrorEffect(player.clientHeight / video.clientWidth);
-			}
-
-			else if (r / 90 % 2 && video.clientHeight > player.clientWidth) {
-				video.style.scale = maintainMirrorEffect(player.clientWidth / video.clientHeight);
-			}
-
-			else if (r / 90 % 2 && video.clientWidth < player.clientHeight) {
-				if (video.clientHeight * player.clientHeight / video.clientWidth > player.clientWidth) {
-					video.style.scale = maintainMirrorEffect(player.clientWidth / video.clientHeight);
-				}
-				else video.style.scale = maintainMirrorEffect(player.clientHeight / video.clientWidth);
-			}
-
-			else video.style.scale = maintainMirrorEffect(1);
-
-			function maintainMirrorEffect(x) {
-				const s = video.style.scale.match(/\-?\d*\.?\d+/g)?.reverse() || [1];
-
-				s[0] = s[0] < 0 ? -x : x;
-				s[1] = (s[1] || s[0]) < 0 ? -x : x;
-
-				return `${s[0]} ${s[1]}`;
-			}
-		}
-
-		ytTweaks.rotateVideo = {
-			storageChanged() {
-				rotateButton.remove();
-				rotateAcwButton.remove();
-			}
 		};
 	}
 
@@ -1957,6 +1595,418 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
+	if (settings.seekFbutton || settings.seekBbutton || settings.seekFhotkeys || settings.seekBhotkeys) {
+		const icon = '<svg xmlns="http://www.w3.org/2000/svg" fill="#fff" version="1.1" width="24px" height="24px" viewBox="0 0 593.912 593.912"><path d="M564.34,246.605L334.045,113.644c-8.852-5.111-18.896-7.813-29.047-7.813l0,0l0,0c-32.071,0-58.163,26.093-58.163,58.163     v41.521L87.709,113.644c-8.852-5.111-18.896-7.813-29.046-7.813h0l0,0c-32.071,0-58.163,26.093-58.163,58.163v265.923     c0,32.07,26.092,58.164,58.164,58.164c10.149,0,20.193-2.703,29.045-7.812l159.127-91.873v41.521     c0,32.07,26.092,58.164,58.164,58.164c10.15,0,20.193-2.703,29.045-7.812l230.297-132.963     c9.16-5.289,16.695-12.941,21.787-22.129c4.766-8.598,7.283-18.355,7.283-28.221c0-9.867-2.518-19.625-7.283-28.222     C581.035,259.546,573.502,251.894,564.34,246.605z M542.922,310.206L312.625,443.167c-2.465,1.424-5.078,2.072-7.625,2.072     c-7.993,0-15.324-6.391-15.324-15.322v-66.254v-49.469v-34.478v-49.467v-66.254c0-8.932,7.332-15.323,15.324-15.324     c2.547,0,5.16,0.65,7.625,2.073l230.297,132.962C553.121,289.594,553.121,304.317,542.922,310.206z M66.29,443.167     c-2.465,1.424-5.08,2.072-7.626,2.072c-7.993,0-15.324-6.391-15.324-15.322V163.995c0-8.932,7.332-15.323,15.324-15.324     c2.547,0,5.161,0.65,7.626,2.073l180.546,104.238v83.946L66.29,443.167z"/><path d="M305,488.581c-32.348,0-58.664-26.316-58.664-58.664v-40.655L87.959,480.701c-8.93,5.155-19.061,7.88-29.295,7.88     C26.316,488.581,0,462.265,0,429.917V163.994c0-32.347,26.316-58.663,58.663-58.663c10.238,0,20.369,2.725,29.297,7.88     l158.376,91.438v-40.655c0-32.347,26.316-58.663,58.663-58.663c10.238,0,20.369,2.725,29.297,7.88L564.59,246.172     c9.238,5.333,16.838,13.051,21.977,22.32c4.806,8.669,7.346,18.512,7.346,28.464c0,9.951-2.54,19.793-7.346,28.463     c-5.136,9.267-12.734,16.984-21.975,22.319L334.295,480.701C325.364,485.856,315.234,488.581,305,488.581z M247.336,387.529     v42.388c0,31.796,25.868,57.664,57.664,57.664c10.06,0,20.017-2.679,28.795-7.745l230.297-132.963     c9.083-5.245,16.553-12.831,21.6-21.938c4.724-8.522,7.221-18.197,7.221-27.979c0-9.783-2.497-19.458-7.221-27.979     c-5.051-9.11-12.521-16.696-21.602-21.938L333.795,114.077c-8.775-5.067-18.733-7.746-28.797-7.746     c-31.795,0-57.663,25.868-57.663,57.663v42.388L87.459,114.077c-8.776-5.067-18.734-7.746-28.796-7.746     C26.868,106.332,1,132.199,1,163.994v265.923c0,31.796,25.868,57.664,57.664,57.664c10.059,0,20.017-2.679,28.795-7.745     L247.336,387.529z M305,445.739c-8.726,0-15.824-7.098-15.824-15.822V163.995c0-8.724,7.099-15.823,15.824-15.824l0,0     c2.766,0,5.416,0.72,7.875,2.14l230.297,132.962c4.946,2.855,7.899,7.971,7.899,13.682c0,5.713-2.953,10.828-7.899,13.684     L312.875,443.6C310.418,445.02,307.768,445.739,305,445.739z M305,149.171c-8.174,0.001-14.824,6.651-14.824,14.824v265.922     c0,8.173,6.65,14.822,14.824,14.822c2.59,0,5.071-0.675,7.375-2.005l230.297-132.961c4.634-2.676,7.399-7.467,7.399-12.818     c0-5.35-2.767-10.141-7.399-12.816L312.375,151.177C310.069,149.846,307.588,149.171,305,149.171L305,149.171z M58.664,445.739     c-8.726,0-15.824-7.098-15.824-15.822V163.995c0-8.724,7.099-15.823,15.824-15.824l0,0c2.766,0,5.416,0.72,7.876,2.14     l180.796,104.383v84.524l-0.25,0.144L66.54,443.6C64.082,445.02,61.432,445.739,58.664,445.739z M58.664,149.171     c-8.174,0.001-14.824,6.651-14.824,14.824v265.922c0,8.173,6.65,14.822,14.824,14.822c2.591,0,5.072-0.675,7.376-2.005     L246.335,338.64v-83.369L66.04,151.177C63.734,149.846,61.252,149.171,58.664,149.171L58.664,149.171z"/></svg>';
+		const seekFbutton = document.createElement('button');
+		const seekBbutton = document.createElement('button');
+
+		if (settings.seekBbutton) {
+			seekBbutton.style.scale = '-1 1';
+			addPlayerControl(seekBbutton, icon, settings.hideSeekBbutton);
+			ytTweaks.getMessage('seek_video_backward').then(function(strg) {
+				seekBbutton.title = strg;
+				seekBbutton.setAttribute('aria-label', strg);
+			});
+			seekBbutton.addEventListener('click', function () {
+				seekBy(-(settings.seekBbuttonBtime ?? 5));
+			});
+		}
+
+		if (settings.seekFbutton) {
+			addPlayerControl(seekFbutton, icon, settings.hideSeekFbutton);
+			ytTweaks.getMessage('seek_video_forward').then(function(strg) {
+				seekFbutton.title = strg;
+				seekFbutton.setAttribute('aria-label', strg);
+			});
+			seekFbutton.addEventListener('click', function () {
+				seekBy(settings.seekFbuttonFtime ?? 5);
+			});
+		}
+
+		if (settings.seekFhotkeys) {
+			for (const p in settings.seekFhotkeys) {
+				ytTweaks.getHotkeys()[p] = function () {
+					seekBy(settings.seekFhotkeys[p]);
+				};
+			}
+		}
+
+		if (settings.seekBhotkeys) {
+			for (const p in settings.seekBhotkeys) {
+				ytTweaks.getHotkeys()[p] = function () {
+					seekBy(-settings.seekBhotkeys[p]);
+				};
+			}
+		}
+
+		const seekBy = function () {
+			let seekedForward;
+			let amountSeeked = 0;
+			let timeoutId;
+
+			return function (stepSize) {
+				getPlayerAndVideo();
+				const time = video.currentTime + stepSize * video.playbackRate;
+
+				clearTimeout(timeoutId);
+				timeoutId = setTimeout(function () {
+					amountSeeked = 0;
+				}, 1000);
+
+				if ((seekedForward && time - video.currentTime < 0 || !seekedForward && time - video.currentTime > 0) || (video.currentTime < 1 || video.currentTime == video.duration)) {
+					amountSeeked = 0;
+				}
+
+				seekedForward = time - video.currentTime > 0;
+				amountSeeked = amountSeeked + Math.round(time - video.currentTime);
+				video.currentTime = time;
+				player.wakeUpControls();
+				showFeedback((seekedForward ? '+' : '-') + formatSecToDDHHMMSS(Math.abs(amountSeeked)));
+			}
+		}();
+
+		ytTweaks.videoSeeking = {
+			storageChanged() {
+				seekBbutton.remove();
+				seekFbutton.remove();
+			}
+		};
+	}
+
+	if (settings.increaseSpeedButton || settings.decreaseSpeedButton || settings.normalSpeedButton || settings.increaseSpeedHotkeys || settings.decreaseSpeedHotkeys || settings.resetSpeedHotkey || settings.customSpeedHotkeys) {
+		const icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="#fff"><path d="M12 1c1.44 0 2.87.28 4.21.83a11 11 0 0 1 3.45 2.27l-1.81 1.05A9 9 0 0 0 3 12a9 9 0 0 0 18-.00l-.01-.44a8.99 8.99 0 0 0-.14-1.20l1.81-1.05A11.00 11.00 0 0 1 10.51 22.9 11 11 0 0 1 12 1Zm7.08 6.25-7.96 3.25a1.74 1.74 0 1 0 1.73 2.99l6.8-5.26a.57.57 0 0 0-.56-.98Z"/></svg>';
+		const incrButton = document.createElement('button');
+		const decrButton = document.createElement('button');
+		const resetButton = document.createElement('button');
+
+		if (settings.decreaseSpeedButton) {
+			decrButton.style.scale = '-1 1';
+			ytTweaks.getMessage('decrease_speed').then(function(strg) {
+				decrButton.title = strg;
+				decrButton.setAttribute('aria-label', strg);
+			});
+			decrButton.addEventListener('click', function () {
+				getPlayerAndVideo();
+				setSpeed(-(settings.decrSpeedButtonStepSize ?? 0.5));
+			});
+			addPlayerControl(decrButton, icon, settings.hideDecrSpeedButton);
+		}
+
+		if (settings.normalSpeedButton) {
+			ytTweaks.getMessage('normal_speed').then(function(strg) {
+				resetButton.title = strg;
+				resetButton.setAttribute('aria-label', strg);
+			});
+			resetButton.addEventListener('click', function() {
+				setSpeed();
+			});
+			addPlayerControl(resetButton, icon, settings.hideNormalSpeedButton);
+			resetButton.children[0].style.rotate = '-60deg';
+		}
+
+		if (settings.increaseSpeedButton) {
+			ytTweaks.getMessage('increase_speed').then(function(strg) {
+				incrButton.title = strg;
+				incrButton.setAttribute('aria-label', strg);
+			});
+			incrButton.addEventListener('click', function () {
+				getPlayerAndVideo();
+				setSpeed(settings.incrSpeedButtonStepSize ?? 0.5);
+			});
+			addPlayerControl(incrButton, icon, settings.hideIncrSpeedButton); 
+		}
+
+		if (settings.increaseSpeedHotkeys) {
+			for (const p in settings.increaseSpeedHotkeys) {
+				ytTweaks.getHotkeys()[p] = function () {
+					setSpeed(settings.increaseSpeedHotkeys[p]);
+				};
+			}
+		}
+
+		if (settings.decreaseSpeedHotkeys) {
+			for (const p in settings.decreaseSpeedHotkeys) {
+				ytTweaks.getHotkeys()[p] = function () {
+					setSpeed(-settings.decreaseSpeedHotkeys[p]);
+				};
+			}
+		}
+
+		if (settings.resetSpeedHotkey) {
+			ytTweaks.getHotkeys()[settings.resetSpeedHotkey] = setSpeed;
+		}
+
+		if (settings.customSpeedHotkeys) {
+			for (const p in settings.customSpeedHotkeys) {
+				ytTweaks.getHotkeys()[p] = function () {
+					setSpeed('', settings.customSpeedHotkeys[p]);
+				};
+			}
+		}
+
+		function setSpeed(stepSize, speed) {
+			getPlayerAndVideo();
+			speed = stepSize ? Math.round((video.playbackRate + stepSize) * 100) / 100 : speed ? speed : normalSpeed;
+			player.setPlaybackRate(speed);
+			video.playbackRate = speed;
+			showFeedback(speed + 'x');
+
+			try {
+				sessionStorage.setItem('yt-player-playback-rate', JSON.stringify({
+					data: speed + '',
+					creation: Date.now()
+				}))
+			} catch { }
+		}
+
+		ytTweaks.speedControl = {
+			storageChanged() {
+				incrButton.remove();
+				decrButton.remove();
+				resetButton.remove();
+			}
+		};
+	}
+
+	if (settings.videoSpeed || settings.channelSpeedButton || settings.setChannelSpeedHotkey || settings.perChannelSpeeds) {
+		let author, setSpeed, lastSpeedSet, globalSpeed, speeds;
+
+		try {
+			globalSpeed = +sessionStorage.getItem('yttwGlobalSpeed');
+			overwriteStorageSetItem();
+			setSpeed = function (e) {
+				video = e.target;
+				player = video.parentElement.parentElement;
+				author = navigator.mediaSession.metadata.artist;
+
+				if (player.className.includes('ad-showing') || !player.className.includes('unstarted-mode')) return;
+
+				if (speeds[author]) {
+					player.setPlaybackRate(speeds[author]);
+					video.playbackRate = speeds[author];
+				}
+
+				else if (video.playbackRate != globalSpeed) {
+					player.setPlaybackRate(globalSpeed);
+					video.playbackRate = globalSpeed;
+				}
+			}
+		}
+		// User has the storage API disabled
+		catch {
+			setSpeed = function (e) {
+				video = e.target;
+				player = e.target.parentElement.parentElement;
+				author = navigator.mediaSession.metadata.artist;
+
+				if (player.className.includes('ad-showing') || !player.className.includes('unstarted-mode')) return;
+
+				if (speeds[author]) {
+					player.setPlaybackRate(speeds[author]);
+					lastSpeedSet = player.getPlaybackRate();
+					e.target.playbackRate = speeds[author];
+				}
+
+				else if (settings.videoSpeed) {
+					player.setPlaybackRate(globalSpeed);
+					e.target.playbackRate = globalSpeed;
+				}
+
+				else if (e.target.playbackRate == lastSpeedSet) {
+					player.setPlaybackRate(1);
+				}
+			}
+		}
+
+		if (!globalSpeed) globalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
+		speeds = settings.perChannelSpeeds || {};
+
+		document.addEventListener('loadstart', setSpeed, true);
+
+		const speedButton = document.createElement('button');
+
+		if (settings.channelSpeedButton)  {
+			ytTweaks.getMessage('set_channel_speed').then(function (strg) {
+				speedButton.title = strg;
+				speedButton.setAttribute('aria-label', strg);
+			});
+			speedButton.addEventListener('click', handleSpeedSetting);
+			addPlayerControl(speedButton, '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="#fff"><path d="M12 1c1.44 0 2.87.28 4.21.83a11 11 0 0 1 3.45 2.27l-1.81 1.05A9 9 0 0 0 3 12a9 9 0 0 0 18-.00l-.01-.44a8.99 8.99 0 0 0-.14-1.20l1.81-1.05A11.00 11.00 0 0 1 10.51 22.9 11 11 0 0 1 12 1Zm7.08 6.25-7.96 3.25a1.74 1.74 0 1 0 1.73 2.99l6.8-5.26a.57.57 0 0 0-.56-.98Z"/></svg>', settings.hideChannelSpeedButton);
+		}
+
+		function handleSpeedSetting(e) {
+			let speed = +prompt(author, speeds[author] || '')?.replace(',', '.');
+			if (isNaN(speed)) return;
+			if (speed) {
+				player.setPlaybackRate(speed);
+				video.playbackRate = speed;
+				speeds[author] = speed;
+			} else {
+				player.setPlaybackRate(globalSpeed);
+				video.playbackRate = globalSpeed;
+				delete speeds[author];
+			}
+
+			document.dispatchEvent(new CustomEvent('yttwSaveSetting', {
+				detail: {
+					perChannelSpeeds: speeds
+				}
+			}));
+		}
+
+		if (settings.setChannelSpeedHotkey) {
+			ytTweaks.getHotkeys()[settings.setChannelSpeedHotkey] = handleSpeedSetting;
+		}
+
+		ytTweaks.videoSpeed = {
+			storageChanged() {
+				document.removeEventListener('loadstart', setSpeed, true);
+				speedButton.removeEventListener('click', handleSpeedSetting);
+				speedButton.remove();
+				delete ytTweaks.videoSpeed;
+			},
+			handleManuallySetSpeed(arg) {
+				if (arg[0] == 'yt-player-playback-rate') {
+					globalSpeed = +JSON.parse(arg[1]).data;
+					sessionStorage.setItem('yttwGlobalSpeed', globalSpeed);
+				}
+			}
+		};
+	}
+
+	if (settings.toggleVolBoost || settings.toggleVolBoostHotkey || settings.autoVolumeBoost) {
+		const level = settings.boostingLevel ?? 2;
+
+		if (settings.autoVolumeBoost) document.addEventListener('loadstart', autoEnableVolBoost, true);
+
+		if (settings.toggleVolBoostHotkey) {
+			ytTweaks.getHotkeys()[settings.toggleVolBoostHotkey] = toggleVolBoost;
+		}
+
+		if (settings.toggleVolBoost) {
+			document.addEventListener('contextmenu', toggleVolBoost, true);
+		}
+
+		function toggleVolBoost(e) {
+			if (e && !e.target.closest(':is([class*="mute"], [class*="Mute"], mute')) return;
+			getPlayerAndVideo();
+			if (!video?.clientWidth) return;
+			e?.stopImmediatePropagation();
+			e?.preventDefault();
+
+			setupVolumeBoost();
+
+			if (video.boosterGainNode.gain.value == level) {
+				video.boosterGainNode.gain.value = 1;
+				showFeedback(player.getVolume());
+				autoEnableVolBoost.canRun = false;
+
+			} else {
+				video.boosterGainNode.gain.value = level;
+				showFeedback(player.getVolume() * level);
+				autoEnableVolBoost.canRun = true;
+			}
+		}
+
+		function autoEnableVolBoost(e) {
+			if (autoEnableVolBoost.canRun == false) return;
+
+			video = e.target;
+			setupVolumeBoost();
+			video.boosterGainNode.gain.value = level;
+		}
+
+		function setupVolumeBoost() {
+			if (!video.boosterGainNode) {
+				if (!video.audioCtx) {
+					video.audioCtx = new AudioContext();
+					video.mediaSource = video.audioCtx.createMediaElementSource(video);
+				}
+
+				const gainNode = video.audioCtx.createGain();
+				video.mediaSource.connect(gainNode);
+				gainNode.connect(video.audioCtx.destination);
+				video.boosterGainNode = gainNode;
+			}
+		}
+
+		ytTweaks.volumeBoost = {
+			storageChanged() {
+				document.removeEventListener('loadstart', autoEnableVolBoost, true);
+				document.removeEventListener('contextmenu', toggleVolBoost, true);
+
+				for (const video of document.querySelectorAll('video')) {
+					if (video.boosterGainNode) video.boosterGainNode.gain.value = 1;
+				}
+			}
+		};
+	}
+
+	if (settings.monoAudioButton || settings.toggleMonoAudioHotkey) {
+		const offIcon = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20.867935 20.867937" version="1.1" id="svg1" xml:space="preserve" fill="#000000"><text xml:space="preserve" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.2507px;font-family:Corbel;-inkscape-font-specification:Corbel;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-opacity:1" x="4.7291713" y="15.029335" id="text10" transform="scale(1.025579,0.97505897)"><tspan id="tspan10" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Corbel;-inkscape-font-specification:Corbel;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-opacity:1" x="4.7291713" y="15.029335">M</tspan></text><ellipse style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1.51524;stroke-dasharray:none;stroke-opacity:1" id="path11" cx="10.433968" cy="10.433969" rx="9.6763477" ry="9.6763487"/></svg>';
+		const onIcon = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" fill="#000000" width="24" height="24" viewBox="0 0 20.867935 20.867937" version="1.1" id="svg1" xml:space="preserve"><path id="path12" d="M 10.433613,0 C 4.6800652,-2.6162365e-7 -2.6162359e-7,4.6800648 0,10.433613 c 4.162193e-7,5.753548 4.6800657,10.433556 10.433613,10.433555 5.753547,0 10.433555,-4.680008 10.433555,-10.433555 C 20.867169,4.6800653 16.18716,4.1621939e-7 10.433613,0 Z M 5.5925976,5.8484765 h 2.2014258 l 2.1893555,5.0009765 c 0.1369871,0.313539 0.2989421,0.742203 0.4507031,1.125469 0.153863,-0.389105 0.330122,-0.856994 0.450703,-1.125469 l 2.189356,-5.0009765 h 2.199375 v 9.1715625 h -1.85086 v -4.446797 c 0,-0.377428 0.02656,-0.8583215 0.03609,-1.2721288 -0.0602,0.1390175 -0.127429,0.3244704 -0.186328,0.4551563 v 0.00193 L 10.938867,15.020098 H 9.9292968 L 7.5936914,9.7563281 h 0.00199 C 7.5328118,9.6154312 7.4702406,9.4431128 7.4074218,9.2973632 c 0.00964,0.4169571 0.036035,0.8891648 0.036035,1.2759378 v 4.446797 H 5.5925976 Z" style="fill:#ffffff"/></svg>';
+		const button = document.createElement('button');
+
+		if (settings.autoMono) document.addEventListener('loadstart', autoEnableMono, true);
+
+		if (settings.monoAudioButton) {
+			button.role = 'switch';
+			button.addEventListener('click', toggleMonoAudio);
+			ytTweaks.getMessage('toggle_mono_audio').then(function (strg) {
+				button.title = strg;
+				button.setAttribute('aria-label', strg);
+			});
+			addPlayerControl(button, settings.autoMono ? onIcon : offIcon, settings.hideMonoAudioButton);
+		}
+
+		if (settings.toggleMonoAudioHotkey) {
+			ytTweaks.getHotkeys()[settings.toggleMonoAudioHotkey] = toggleMonoAudio;
+		}
+
+		function toggleMonoAudio(e) {
+			getPlayerAndVideo();
+			if (!video?.clientWidth) return;
+
+			setupMonoAudio();
+			const isMonoOn = video.audioCtx.destination.channelCount == 1;
+
+			video.audioCtx.destination.channelCount = isMonoOn ? video.audioCtx.destination.maxChannelCount : 1;
+			if (!e) showFeedback('', isMonoOn ? offIcon : onIcon);
+			button.innerHTML = isMonoOn ? offIcon : onIcon;
+			button.setAttribute('aria-checked', isMonoOn ? false : true);
+			autoEnableMono.canRun = isMonoOn ? false : true;
+		}
+
+		function autoEnableMono(e) {
+			if (autoEnableMono.canRun == false) return;
+
+			video = e.target;
+			setupMonoAudio();
+			video.audioCtx.destination.channelCount = 1;
+			button.setAttribute('aria-checked', true);
+		}
+
+		function setupMonoAudio() {
+			if (!video.audioCtx) {
+				video.audioCtx = new AudioContext();
+				video.mediaSource = video.audioCtx.createMediaElementSource(video);
+				video.mediaSource.connect(video.audioCtx.destination);
+			}
+		}
+
+		ytTweaks.monoAudio = {
+			storageChanged() {
+				document.removeEventListener('loadstart', autoEnableMono, true);
+				button.removeEventListener('click', toggleMonoAudio);
+				button.remove();
+
+				for (const video of document.querySelectorAll('video')) {
+					if (video.audioCtx) video.audioCtx.destination.channelCount = video.audioCtx.destination.maxChannelCount;
+				}
+			}
+		};
+	}
+
 	if (settings.fullscreenTheaterMode) {
 		const videoHeight = settings.ftmHeight ?? 100;
 		const autoHideHeader = settings.ftmAutoHideHeader != false;
@@ -2432,57 +2482,6 @@ ytTweaks.tweaks.push(function (settings) {
 		}
 	}
 
-	if (settings.increaseSpeedHotkeys || settings.decreaseSpeedHotkeys || settings.resetSpeedHotkey || settings.customSpeedHotkeys) {
-		if (settings.increaseSpeedHotkeys) {
-			for (const p in settings.increaseSpeedHotkeys) {
-				ytTweaks.getHotkeys()[p] = function () {
-					getPlayerAndVideo();
-					setSpeed(Math.round((video.playbackRate + settings.increaseSpeedHotkeys[p]) * 100) / 100);
-				};
-			}
-		}
-
-		if (settings.decreaseSpeedHotkeys) {
-			for (const p in settings.decreaseSpeedHotkeys) {
-				ytTweaks.getHotkeys()[p] = function () {
-					getPlayerAndVideo();
-					setSpeed(Math.round((video.playbackRate - settings.decreaseSpeedHotkeys[p]) * 100) / 100);
-				};
-			}
-		}
-
-		if (settings.resetSpeedHotkey) {
-			const normalSpeed = settings.videoSpeed ? settings.vsSpeed ?? 1.5 : 1;
-
-			ytTweaks.getHotkeys()[settings.resetSpeedHotkey] = function () {
-				getPlayerAndVideo();
-				setSpeed(normalSpeed);
-			};
-		}
-
-		if (settings.customSpeedHotkeys) {
-			for (const p in settings.customSpeedHotkeys) {
-				ytTweaks.getHotkeys()[p] = function () {
-					getPlayerAndVideo();
-					setSpeed(settings.customSpeedHotkeys[p]);
-				};
-			}
-		}
-
-		function setSpeed(speed) {
-			player.setPlaybackRate(speed);
-			video.playbackRate = speed;
-			showFeedback(speed + 'x');
-
-			try {
-				sessionStorage.setItem('yt-player-playback-rate', JSON.stringify({
-					data: speed + '',
-					creation: Date.now()
-				}))
-			} catch { }
-		}
-	}
-
 	if (settings.increaseVolHotkeys || settings.decreaseVolHotkeys) {
 		if (settings.increaseVolHotkeys) {
 			for (const p in settings.increaseVolHotkeys) {
@@ -2507,7 +2506,7 @@ ytTweaks.tweaks.push(function (settings) {
 			else if (vol > 100) vol = 100;
 
 			player.setVolume(vol);
-			showFeedback(vol, video.muted ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 0 24 24' width='24' fill='%23fff'%3E%3Cpath d='M11.60 2.08L11.48 2.14L3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87C1.26 9.77 1.00 10.79 1 11.83V12.16L1.01 12.56C1.07 13.52 1.37 14.46 1.87 15.29C2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.80 21.99 11.98 21.99C12.16 22.00 12.33 21.95 12.49 21.87C12.64 21.78 12.77 21.65 12.86 21.50C12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52C12.80 2.37 12.68 2.25 12.54 2.16C12.41 2.07 12.25 2.01 12.08 2.00C11.92 1.98 11.75 2.01 11.60 2.08ZM4.94 8.4V8.40L11 4.76V19.23L4.94 15.6C4.38 15.26 3.92 14.80 3.58 14.25C3.24 13.70 3.05 13.07 3.00 12.43L3 12.17V11.83C2.99 11.14 3.17 10.46 3.51 9.86C3.85 9.25 4.34 8.75 4.94 8.4ZM21.29 8.29L19 10.58L16.70 8.29L16.63 8.22C16.43 8.07 16.19 7.99 15.95 8.00C15.70 8.01 15.47 8.12 15.29 8.29C15.12 8.47 15.01 8.70 15.00 8.95C14.99 9.19 15.07 9.43 15.22 9.63L15.29 9.70L17.58 12L15.29 14.29C15.19 14.38 15.12 14.49 15.06 14.61C15.01 14.73 14.98 14.87 14.98 15.00C14.98 15.13 15.01 15.26 15.06 15.39C15.11 15.51 15.18 15.62 15.28 15.71C15.37 15.81 15.48 15.88 15.60 15.93C15.73 15.98 15.86 16.01 15.99 16.01C16.12 16.01 16.26 15.98 16.38 15.93C16.50 15.87 16.61 15.80 16.70 15.70L19 13.41L21.29 15.70L21.36 15.77C21.56 15.93 21.80 16.01 22.05 15.99C22.29 15.98 22.53 15.88 22.70 15.70C22.88 15.53 22.98 15.29 22.99 15.05C23.00 14.80 22.93 14.56 22.77 14.36L22.70 14.29L20.41 12L22.70 9.70C22.80 9.61 22.87 9.50 22.93 9.38C22.98 9.26 23.01 9.12 23.01 8.99C23.01 8.86 22.98 8.73 22.93 8.60C22.88 8.48 22.81 8.37 22.71 8.28C22.62 8.18 22.51 8.11 22.39 8.06C22.26 8.01 22.13 7.98 22.00 7.98C21.87 7.98 21.73 8.01 21.61 8.06C21.49 8.12 21.38 8.19 21.29 8.29Z'%3E%3C/path%3E%3C/svg%3E" : '');
+			showFeedback(vol, video.muted ? '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="#fff"><path d="M11.60 2.08L11.48 2.14L3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87C1.26 9.77 1.00 10.79 1 11.83V12.16L1.01 12.56C1.07 13.52 1.37 14.46 1.87 15.29C2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.80 21.99 11.98 21.99C12.16 22.00 12.33 21.95 12.49 21.87C12.64 21.78 12.77 21.65 12.86 21.50C12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52C12.80 2.37 12.68 2.25 12.54 2.16C12.41 2.07 12.25 2.01 12.08 2.00C11.92 1.98 11.75 2.01 11.60 2.08ZM4.94 8.4V8.40L11 4.76V19.23L4.94 15.6C4.38 15.26 3.92 14.80 3.58 14.25C3.24 13.70 3.05 13.07 3.00 12.43L3 12.17V11.83C2.99 11.14 3.17 10.46 3.51 9.86C3.85 9.25 4.34 8.75 4.94 8.4ZM21.29 8.29L19 10.58L16.70 8.29L16.63 8.22C16.43 8.07 16.19 7.99 15.95 8.00C15.70 8.01 15.47 8.12 15.29 8.29C15.12 8.47 15.01 8.70 15.00 8.95C14.99 9.19 15.07 9.43 15.22 9.63L15.29 9.70L17.58 12L15.29 14.29C15.19 14.38 15.12 14.49 15.06 14.61C15.01 14.73 14.98 14.87 14.98 15.00C14.98 15.13 15.01 15.26 15.06 15.39C15.11 15.51 15.18 15.62 15.28 15.71C15.37 15.81 15.48 15.88 15.60 15.93C15.73 15.98 15.86 16.01 15.99 16.01C16.12 16.01 16.26 15.98 16.38 15.93C16.50 15.87 16.61 15.80 16.70 15.70L19 13.41L21.29 15.70L21.36 15.77C21.56 15.93 21.80 16.01 22.05 15.99C22.29 15.98 22.53 15.88 22.70 15.70C22.88 15.53 22.98 15.29 22.99 15.05C23.00 14.80 22.93 14.56 22.77 14.36L22.70 14.29L20.41 12L22.70 9.70C22.80 9.61 22.87 9.50 22.93 9.38C22.98 9.26 23.01 9.12 23.01 8.99C23.01 8.86 22.98 8.73 22.93 8.60C22.88 8.48 22.81 8.37 22.71 8.28C22.62 8.18 22.51 8.11 22.39 8.06C22.26 8.01 22.13 7.98 22.00 7.98C21.87 7.98 21.73 8.01 21.61 8.06C21.49 8.12 21.38 8.19 21.29 8.29Z"/></svg>' : '');
 
 			try {
 				localStorage.setItem('yt-player-volume', JSON.stringify({
@@ -2521,49 +2520,6 @@ ytTweaks.tweaks.push(function (settings) {
 				}))
 			} catch { }
 		}
-	}
-
-	if (settings.seekFhotkeys || settings.seekBhotkeys) {
-		if (settings.seekFhotkeys) {
-			for (const p in settings.seekFhotkeys) {
-				ytTweaks.getHotkeys()[p] = function () {
-					getPlayerAndVideo();
-					seekTo(video.currentTime + settings.seekFhotkeys[p] * video.playbackRate);
-				};
-			}
-		}
-
-		if (settings.seekBhotkeys) {
-			for (const p in settings.seekBhotkeys) {
-				ytTweaks.getHotkeys()[p] = function () {
-					getPlayerAndVideo();
-					seekTo(video.currentTime - settings.seekBhotkeys[p] * video.playbackRate);
-				};
-			}
-		}
-
-		const seekTo = function () {
-			let seekedForward;
-			let amountSeeked = 0;
-			let timeoutId;
-
-			return function (time) {
-				clearTimeout(timeoutId);
-				timeoutId = setTimeout(function () {
-					amountSeeked = 0;
-				}, 1000);
-
-				if ((seekedForward && time - video.currentTime < 0 || !seekedForward && time - video.currentTime > 0) || (video.currentTime < 1 || video.currentTime == video.duration)) {
-					amountSeeked = 0;
-				}
-
-				seekedForward = time - video.currentTime > 0;
-				amountSeeked = amountSeeked + Math.round(time - video.currentTime);
-				video.currentTime = time;
-				player.wakeUpControls();
-				showFeedback((seekedForward ? '+' : '-') + formatSecToDDHHMMSS(Math.abs(amountSeeked)));
-			}
-		}();
 	}
 
 	if (settings.undoSeekHotkey) {
@@ -2705,8 +2661,8 @@ ytTweaks.tweaks.push(function (settings) {
 	}
 
 	if (settings.toggleLoopHotkey) {
-		const loopOnIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M3.5 13L3.29592 12.0476C2.62895 8.93509 5.00172 6 8.18494 6H19M19 6L16 9M19 6L16 3M20.5 11L20.7041 11.9524C21.3711 15.0649 18.9983 18 15.8151 18H5M5 18L8 15M5 18L8 21' stroke='%234fff75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
-		const loopOffIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24px' height='24px' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M3.5 13L3.29592 12.0476C2.62895 8.93509 5.00172 6 8.18494 6H19M19 6L16 9M19 6L16 3M20.5 11L20.7041 11.9524C21.3711 15.0649 18.9983 18 15.8151 18H5M5 18L8 15M5 18L8 21' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
+		const loopOnIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M3.5 13L3.29592 12.0476C2.62895 8.93509 5.00172 6 8.18494 6H19M19 6L16 9M19 6L16 3M20.5 11L20.7041 11.9524C21.3711 15.0649 18.9983 18 15.8151 18H5M5 18L8 15M5 18L8 21" stroke="#4fff75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+		const loopOffIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M3.5 13L3.29592 12.0476C2.62895 8.93509 5.00172 6 8.18494 6H19M19 6L16 9M19 6L16 3M20.5 11L20.7041 11.9524C21.3711 15.0649 18.9983 18 15.8151 18H5M5 18L8 15M5 18L8 21" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 		ytTweaks.getHotkeys()[settings.toggleLoopHotkey] = function () {
 			getPlayerAndVideo();
@@ -2715,7 +2671,44 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
-	if (settings.zoomInHotkeys || settings.zoomOutHotkeys) {
+	if (settings.zoomInButton || settings.zoomOutButton || settings.zoomInHotkeys || settings.zoomOutHotkeys) {
+		const zoomInButton = document.createElement('button');
+		const zoomOutButton = document.createElement('button');
+		const cancelZoomButton = document.createElement('button');
+
+		if (settings.zoomOutButton) {
+			ytTweaks.getMessage('zoom_out').then(function (strg) {
+				zoomOutButton.title = strg;
+				zoomOutButton.setAttribute('aria-label', strg);
+			});
+			zoomOutButton.addEventListener('click', function() {
+				zoomBy(-(settings.zoomOutButtonStepSize ?? 0.5));
+			});
+			addPlayerControl(zoomOutButton, '<svg xmlns="http://www.w3.org/2000/svg" stroke-width="0.5" stroke="#fff" fill="#fff" width="24px" height="24px" viewBox="0 0 32 32" id="icon"><rect x="8" y="12" width="10" height="2"/><path d="M21.4479,20A10.856,10.856,0,0,0,24,13,11,11,0,1,0,13,24a10.856,10.856,0,0,0,7-2.5521L27.5859,29,29,27.5859ZM13,22a9,9,0,1,1,9-9A9.01,9.01,0,0,1,13,22Z" transform="translate(0)"/></svg>', settings.hideZoomOutButton);
+		}
+
+		if (settings.cancelZoomButton) {
+			ytTweaks.getMessage('cancel_zoom').then(function (strg) {
+				cancelZoomButton.title = strg;
+				cancelZoomButton.setAttribute('aria-label', strg);
+			});
+			cancelZoomButton.addEventListener('click', function() {
+				zoomBy(-99);
+			});
+			addPlayerControl(cancelZoomButton, '<svg xmlns="http://www.w3.org/2000/svg" stroke-width="0.5" stroke="#fff" fill="#fff" width="24px" height="24px" viewBox="0 0 32 32" id="icon"><path d="M22.4478,21A10.855,10.855,0,0,0,25,14,10.99,10.99,0,0,0,6,6.4658V2H4v8h8V8H7.332a8.9768,8.9768,0,1,1-2.1,8H3.1912A11.0118,11.0118,0,0,0,14,25a10.855,10.855,0,0,0,7-2.5522L28.5859,30,30,28.5859Z"/></svg>', settings.hideCancelZoomButton);
+		}
+
+		if (settings.zoomInButton) {
+			ytTweaks.getMessage('zoom_in').then(function (strg) {
+				zoomInButton.title = strg;
+				zoomInButton.setAttribute('aria-label', strg);
+			});
+			zoomInButton.addEventListener('click', function() {
+				zoomBy(settings.zoomInButtonStepSize ?? 0.5);
+			});
+			addPlayerControl(zoomInButton, '<svg xmlns="http://www.w3.org/2000/svg" stroke-width="0.5" stroke="#fff" fill="#fff" width="24px" height="24px" viewBox="0 0 32 32" id="icon"><polygon points="18 12 14 12 14 8 12 8 12 12 8 12 8 14 12 14 12 18 14 18 14 14 18 14 18 12"/><path d="M21.4479,20A10.856,10.856,0,0,0,24,13,11,11,0,1,0,13,24a10.856,10.856,0,0,0,7-2.5521L27.5859,29,29,27.5859ZM13,22a9,9,0,1,1,9-9A9.01,9.01,0,0,1,13,22Z"/></svg>', settings.hideZoomInButton);
+		}
+		
 		if (settings.zoomInHotkeys) {
 			for (const p in settings.zoomInHotkeys) {
 				ytTweaks.getHotkeys()[p] = function () {
@@ -2739,6 +2732,14 @@ ytTweaks.tweaks.push(function (settings) {
 			const translate = videoZoom.getTranslate();
 
 			videoZoom.set(scale, { x: Math.abs(translate.x) + (0.5 * video.clientWidth), y: Math.abs(translate.y) + (0.5 * video.clientHeight) });
+		}
+
+		ytTweaks.videoZoom = {
+			storageChanged() {
+				zoomInButton.remove();
+				zoomOutButton.remove();
+				cancelZoomButton.remove();
+			}
 		}
 	}
 
@@ -2785,6 +2786,146 @@ ytTweaks.tweaks.push(function (settings) {
 
 			video.style.translate = `${translate.x / video.clientWidth * 100}% ${translate.y / video.clientHeight * 100}%`;
 		}
+	}
+
+	if (settings.flipHorizontallyButton || settings.flipVerticallyButton || settings.flipHorizontallyHotkey || settings.flipVerticallyHotkey) {
+		const flipHorIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M11 3L11 21" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path fill-rule="evenodd" clip-rule="evenodd" d="M20 8.2L20 8.16146C20 7.63431 20 7.17955 19.9694 6.80497C19.9371 6.40963 19.8658 6.01641 19.673 5.63803C19.3854 5.07354 18.9265 4.6146 18.362 4.32698C17.9836 4.13419 17.5904 4.06287 17.195 4.03057C16.8205 3.99997 16.3657 3.99998 15.8385 4L15.8 4L14 4L14 6L15.8 6C16.3766 6 16.7488 6.00078 17.0322 6.02393C17.3038 6.04612 17.4045 6.0838 17.454 6.10899C17.6422 6.20487 17.7951 6.35785 17.891 6.54601C17.9162 6.59545 17.9539 6.69617 17.9761 6.96784C17.9992 7.25117 18 7.62345 18 8.2L18 15.8C18 16.3766 17.9992 16.7488 17.9761 17.0322C17.9539 17.3038 17.9162 17.4045 17.891 17.454C17.7951 17.6422 17.6422 17.7951 17.454 17.891C17.4045 17.9162 17.3038 17.9539 17.0322 17.9761C16.7488 17.9992 16.3766 18 15.8 18L14 18L14 20L15.8 20L15.8385 20C16.3657 20 16.8204 20 17.195 19.9694C17.5904 19.9371 17.9836 19.8658 18.362 19.673C18.9265 19.3854 19.3854 18.9265 19.673 18.362C19.8658 17.9836 19.9371 17.5904 19.9694 17.195C20 16.8205 20 16.3657 20 15.8385L20 15.8L20 8.2ZM12 20L12 18L8.2 18C7.62344 18 7.25117 17.9992 6.96783 17.9761C6.69617 17.9539 6.59545 17.9162 6.54601 17.891C6.35785 17.7951 6.20486 17.6422 6.10899 17.454C6.0838 17.4045 6.04612 17.3038 6.02393 17.0322C6.00078 16.7488 6 16.3766 6 15.8L6 8.2C6 7.62345 6.00078 7.25117 6.02393 6.96784C6.04612 6.69617 6.0838 6.59545 6.10899 6.54601C6.20487 6.35785 6.35785 6.20487 6.54601 6.10899C6.59545 6.0838 6.69617 6.04612 6.96783 6.02393C7.25117 6.00078 7.62345 6 8.2 6L12 6L12 4L8.2 4L8.16146 4C7.63431 3.99998 7.17954 3.99997 6.80497 4.03057C6.40963 4.06287 6.01641 4.13419 5.63803 4.32698C5.07354 4.6146 4.6146 5.07354 4.32698 5.63803C4.13419 6.01641 4.06287 6.40963 4.03057 6.80497C3.99997 7.17955 3.99998 7.63432 4 8.16148L4 8.2L4 15.8L4 15.8385C3.99998 16.3657 3.99997 16.8205 4.03057 17.195C4.06287 17.5904 4.13419 17.9836 4.32698 18.362C4.6146 18.9265 5.07354 19.3854 5.63803 19.673C6.01641 19.8658 6.40963 19.9371 6.80497 19.9694C7.17955 20 7.63432 20 8.16148 20L8.2 20L12 20Z" fill="#fff"/></svg>';
+		const flipVertIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M3 13H21" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path fill-rule="evenodd" clip-rule="evenodd" d="M8.2 4H8.16146C7.63431 3.99998 7.17955 3.99997 6.80497 4.03057C6.40963 4.06287 6.01641 4.13419 5.63803 4.32698C5.07354 4.6146 4.6146 5.07354 4.32698 5.63803C4.13419 6.01641 4.06287 6.40963 4.03057 6.80497C3.99997 7.17954 3.99998 7.63431 4 8.16146V8.2V10H6V8.2C6 7.62345 6.00078 7.25117 6.02393 6.96784C6.04612 6.69617 6.0838 6.59545 6.10899 6.54601C6.20487 6.35785 6.35785 6.20487 6.54601 6.10899C6.59545 6.0838 6.69617 6.04612 6.96784 6.02393C7.25117 6.00078 7.62345 6 8.2 6H15.8C16.3766 6 16.7488 6.00078 17.0322 6.02393C17.3038 6.04612 17.4045 6.0838 17.454 6.10899C17.6422 6.20487 17.7951 6.35785 17.891 6.54601C17.9162 6.59545 17.9539 6.69617 17.9761 6.96784C17.9992 7.25117 18 7.62345 18 8.2V10H20V8.2V8.16148C20 7.63432 20 7.17955 19.9694 6.80497C19.9371 6.40963 19.8658 6.01641 19.673 5.63803C19.3854 5.07354 18.9265 4.6146 18.362 4.32698C17.9836 4.13419 17.5904 4.06287 17.195 4.03057C16.8205 3.99997 16.3657 3.99998 15.8385 4H15.8H8.2ZM20 12H18V15.8C18 16.3766 17.9992 16.7488 17.9761 17.0322C17.9539 17.3038 17.9162 17.4045 17.891 17.454C17.7951 17.6422 17.6422 17.7951 17.454 17.891C17.4045 17.9162 17.3038 17.9539 17.0322 17.9761C16.7488 17.9992 16.3766 18 15.8 18H8.2C7.62345 18 7.25117 17.9992 6.96784 17.9761C6.69617 17.9539 6.59545 17.9162 6.54601 17.891C6.35785 17.7951 6.20487 17.6422 6.10899 17.454C6.0838 17.4045 6.04612 17.3038 6.02393 17.0322C6.00078 16.7488 6 16.3766 6 15.8V12H4V15.8V15.8385C3.99998 16.3657 3.99997 16.8205 4.03057 17.195C4.06287 17.5904 4.13419 17.9836 4.32698 18.362C4.6146 18.9265 5.07354 19.3854 5.63803 19.673C6.01641 19.8658 6.40963 19.9371 6.80497 19.9694C7.17955 20 7.63432 20 8.16148 20H8.2H15.8H15.8385C16.3657 20 16.8205 20 17.195 19.9694C17.5904 19.9371 17.9836 19.8658 18.362 19.673C18.9265 19.3854 19.3854 18.9265 19.673 18.362C19.8658 17.9836 19.9371 17.5904 19.9694 17.195C20 16.8205 20 16.3657 20 15.8385V15.8V12Z" fill="#fff"/></svg>';
+		const flipHorButton = document.createElement('button');
+		const flipVerButton = document.createElement('button');
+
+		if (settings.flipHorizontallyButton) {
+			flipHorButton.role = 'switch';
+			ytTweaks.getMessage('flip_video_horizontally').then(function (strg) {
+				flipHorButton.title = strg;
+				flipHorButton.setAttribute('aria-label', strg);
+			});
+			flipHorButton.addEventListener('click', function (e) {
+				flipVideo(e, true);
+			});
+			addPlayerControl(flipHorButton, flipHorIcon, settings.hideFlipHorizontallyButton);
+		}
+
+		if (settings.flipVerticallyButton) {
+			flipVerButton.role = 'switch';
+			ytTweaks.getMessage('flip_video_vertically').then(function (strg) {
+				flipVerButton.title = strg;
+				flipVerButton.setAttribute('aria-label', strg);
+			});
+			flipVerButton.addEventListener('click', flipVideo);
+			addPlayerControl(flipVerButton, flipVertIcon, settings.hideFlipVerticallyButton);
+		}
+
+		if (settings.flipHorizontallyHotkey) {
+			ytTweaks.getHotkeys()[settings.flipHorizontallyHotkey] = function () {
+				flipVideo('', true);
+			};
+		}
+
+		if (settings.flipVerticallyHotkey) {
+			ytTweaks.getHotkeys()[settings.flipVerticallyHotkey] = flipVideo;
+		}
+
+		function flipVideo(e, horizontally) {
+			getPlayerAndVideo();
+
+			video.style.transition = 'scale 0.25s';
+			video.style.translate = video.style.transformOrigin = '';
+			const s = video.style.scale.match(/\d*\.?\d+/)?.[0] || 1;
+			const invert = parseInt(video.style.rotate || 0) / 90 % 2;
+
+			const horFlipped = flipHorButton.getAttribute('aria-checked') == 'true';
+			const vertFlipped = flipVerButton.getAttribute('aria-checked') == 'true';
+
+			video.style.scale = horizontally ? horFlipped ? vertFlipped ? invert ? `${-s} ${s}` : `${s} ${-s}` : s : vertFlipped ? -s : invert ? `${s} ${-s}` : `${-s} ${s}` : vertFlipped ? horFlipped ? invert ? `${s} ${-s}` : `${-s} ${s}` : s : horFlipped ? -s : invert ? `${-s} ${s}` : `${s} ${-s}`;
+			horizontally ? flipHorButton.setAttribute('aria-checked', !horFlipped) : flipVerButton.setAttribute('aria-checked', !vertFlipped);		
+		}
+
+		ytTweaks.flipVideo = {
+			storageChanged() {
+				flipHorButton.remove();
+				flipVerButton.remove();
+			}
+		};
+	}
+
+	if (settings.rotateButton || settings.rotateAcwButton || settings.rotateHotkey || settings.rotateAcwHotkey) {
+		const icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24"><path d="M21.37,5.07a1,1,0,0,0-1.3.56l-1,2.45A9,9,0,1,0,17.75,18a1,1,0,0,0-.09-1.41,1,1,0,0,0-1.41.09,7,7,0,1,1,1.2-7.33L14.37,8.07a1,1,0,1,0-.74,1.86l5,2A1,1,0,0,0,19,12a1,1,0,0,0,.93-.63l2-5A1,1,0,0,0,21.37,5.07Z" style="fill: #fff"/></svg>';
+		const rotateButton = document.createElement('button');
+		const rotateAcwButton = document.createElement('button');
+
+		if (settings.rotateAcwButton) {
+			rotateAcwButton.style.scale = '-1 1';
+			ytTweaks.getMessage('rotate_video_anti_clockwise').then(function (strg) {
+				rotateAcwButton.title = strg;
+				rotateAcwButton.setAttribute('aria-label', strg);
+			});
+			rotateAcwButton.addEventListener('click', function () {
+				rotate();
+			});
+			addPlayerControl(rotateAcwButton, icon, settings.hideRotateAcwButton);
+		}
+
+		if (settings.rotateButton) {
+			ytTweaks.getMessage('rotate_video_clockwise').then(function (strg) {
+				rotateButton.title = strg;
+				rotateButton.setAttribute('aria-label', strg);
+			});
+			rotateButton.addEventListener('click', rotate);
+			addPlayerControl(rotateButton, icon, settings.hideRotateButton);
+		}
+
+		if (settings.rotateHotkey) {
+			ytTweaks.getHotkeys()[settings.rotateHotkey] = function () {
+				rotate(true);
+			};
+		}
+
+		if (settings.rotateAcwHotkey) {
+			ytTweaks.getHotkeys()[settings.rotateAcwHotkey] = rotate;
+		}
+
+		function rotate(clockwise) {
+			getPlayerAndVideo();
+
+			const r = parseInt(video.style.rotate || 0) + (clockwise ? 90 : -90);
+			video.style.transition = 'rotate 0.25s, scale 0.25s';
+			video.style.translate = video.style.transformOrigin = '';
+			video.style.rotate = r + 'deg';
+
+			if (r / 90 % 2 && video.clientWidth > player.clientHeight) {
+				video.style.scale = maintainMirrorEffect(player.clientHeight / video.clientWidth);
+			}
+
+			else if (r / 90 % 2 && video.clientHeight > player.clientWidth) {
+				video.style.scale = maintainMirrorEffect(player.clientWidth / video.clientHeight);
+			}
+
+			else if (r / 90 % 2 && video.clientWidth < player.clientHeight) {
+				if (video.clientHeight * player.clientHeight / video.clientWidth > player.clientWidth) {
+					video.style.scale = maintainMirrorEffect(player.clientWidth / video.clientHeight);
+				}
+				else video.style.scale = maintainMirrorEffect(player.clientHeight / video.clientWidth);
+			}
+
+			else video.style.scale = maintainMirrorEffect(1);
+
+			function maintainMirrorEffect(x) {
+				const s = video.style.scale.match(/\-?\d*\.?\d+/g)?.reverse() || [1];
+
+				s[0] = s[0] < 0 ? -x : x;
+				s[1] = (s[1] || s[0]) < 0 ? -x : x;
+
+				return `${s[0]} ${s[1]}`;
+			}
+		}
+
+		ytTweaks.rotateVideo = {
+			storageChanged() {
+				rotateButton.remove();
+				rotateAcwButton.remove();
+			}
+		};
 	}
 
 	if (settings.videoFiltersButton || settings.toggleVideoFiltersHotkey || settings.autoApplyVideoFilters) {
@@ -2888,13 +3029,6 @@ ytTweaks.tweaks.push(function (settings) {
 		`;
 
 		const button = document.createElement('button');
-		button.hiddenControl = settings.hideVideoFiltersButton;
-		button.role = 'switch';
-		button.addEventListener('click', toggleFilters);
-		ytTweaks.getMessage('toggle_video_filters').then(function (strg) {
-			button.title = strg;
-			button.setAttribute('aria-label', strg);
-		});
 
 		const popup = document.createElement('div');
 		popup.id = 'yttw-video-filters-panel';
@@ -2949,7 +3083,13 @@ ytTweaks.tweaks.push(function (settings) {
 		}
 
 		if (settings.videoFiltersButton) {
-			addPlayerControl(button, 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M10 4C10 7.31371 7.31371 10 4 10C7.31371 10 10 12.6863 10 16C10 12.6863 12.6863 10 16 10C12.6863 10 10 7.31371 10 4Z" stroke="%23fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 15C17.5 16.3807 16.3807 17.5 15 17.5C16.3807 17.5 17.5 18.6193 17.5 20C17.5 18.6193 18.6193 17.5 20 17.5C18.6193 17.5 17.5 16.3807 17.5 15Z" stroke="%23fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+			button.role = 'switch';
+			ytTweaks.getMessage('toggle_video_filters').then(function (strg) {
+				button.title = strg;
+				button.setAttribute('aria-label', strg);
+			});
+			button.addEventListener('click', toggleFilters);
+			addPlayerControl(button, '<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M10 4C10 7.31371 7.31371 10 4 10C7.31371 10 10 12.6863 10 16C10 12.6863 12.6863 10 16 10C12.6863 10 10 7.31371 10 4Z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 15C17.5 16.3807 16.3807 17.5 15 17.5C16.3807 17.5 17.5 18.6193 17.5 20C17.5 18.6193 18.6193 17.5 20 17.5C18.6193 17.5 17.5 16.3807 17.5 15Z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>', settings.hideVideoFiltersButton);
 		}
 
 		if (settings.toggleVideoFiltersHotkey) {
@@ -2981,7 +3121,7 @@ ytTweaks.tweaks.push(function (settings) {
 
 			applyFilters();			
 			clearTimeout(timeoutId);
-			timeoutId = setTimeout(saveSettings, 1000);
+			timeoutId = setTimeout(saveSettings, 2000);
 		}
 
 		function applyFilters(auto) {
@@ -3000,7 +3140,6 @@ ytTweaks.tweaks.push(function (settings) {
 		}
 
 		popup.addEventListener('input', handleInput);
-
 		popup.addEventListener('keydown', function(e) {
 			e.stopPropagation();
 			player.wakeUpControls();
@@ -3035,4 +3174,3 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 });
-})();
