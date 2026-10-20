@@ -2373,7 +2373,7 @@ ytTweaks.tweaks.push(function (settings) {
 
 	if (settings.hideEndCards) ytTweaks.sheet.textContent += `
     ${settings.hideEndCards == 'hide' ? '' : '.ytp-autohide'} .ytp-ce-element.ytp-ce-element-show {
-    ${settings.hideEndCards == 'hide' ? 'display: none;' : 'opacity: 0;'}
+	  display: none;
     }
     `;
 
