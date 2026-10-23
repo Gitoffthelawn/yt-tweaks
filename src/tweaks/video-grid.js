@@ -31,11 +31,7 @@ ytTweaks.tweaks.push(function (settings) {
         }
 
         /* Homepage skeleton */
-        #home-page-skeleton .rich-grid-media-skeleton {
-          min-width: ${minColumnWidth - 16}px !important;
-          flex-basis: ${minColumnWidth - 16}px !important;
-        }
-
+        #home-page-skeleton #home-container-media,
         /* Watch page - related videos grid (it appears below the player when the sidebar is not present) */
         ytd-item-section-renderer[lockup-container-type="2"][is-grid-view-enabled] #contents.ytd-item-section-renderer {
           grid-template-columns: repeat(auto-fill, minmax(max(${minColumnWidth - 16}px, calc((100%/${maxNumOfColumns}) - 16px)), 1fr));
