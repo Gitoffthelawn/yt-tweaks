@@ -224,6 +224,9 @@
     "auto_scroll_shorts_option_sub_label": {
         "message": "Spielt den nächsten Short automatisch ab, sobald der aktuelle zu Ende ist."
     },
+    "shorts_auto_scroll_always_on": {
+        "message": "Automatisch scrollen immer aktiviert"
+    },
     "toggle_loop": {
         "message": "Schleife umschalten"
     },

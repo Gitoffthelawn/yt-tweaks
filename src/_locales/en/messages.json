@@ -224,6 +224,9 @@
     "auto_scroll_shorts_option_sub_label": {
         "message": "Autoplays the next short when the first has finished."
     },
+    "shorts_auto_scroll_always_on": {
+        "message": "Scroll when the comments/description panel is open"
+    },
     "toggle_loop": {
         "message": "Toggle loop"
     },

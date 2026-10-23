@@ -219,10 +219,13 @@
         "message": "Resumo automático"
     },
     "auto_scroll_shorts": {
-        "message": "Avançar pro próximo Short automaticamente"
+        "message": "Rolagem automática de Shorts"
     },
     "auto_scroll_shorts_option_sub_label": {
-        "message": "Abre o Short seguinte após o atual acabar."
+        "message": "Quando um Short terminar, o próximo começará automaticamente."
+    },
+    "shorts_auto_scroll_always_on": {
+        "message": "Manter ativada ao abrir o painel de comentários/descrição"
     },
     "toggle_loop": {
         "message": "Ativar/desativar loop"

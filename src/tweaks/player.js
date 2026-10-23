@@ -1331,7 +1331,8 @@ ytTweaks.tweaks.push(function (settings) {
 			if (window.location.pathname.includes('shorts')) {
 				el = el || e.target.closest('ytd-shorts');
 				el2 = e.target.closest('.reel-video-in-sequence-new').nextElementSibling;
-				if (autoPlay && el2.tagName != 'DOM-REPEAT' && !el.querySelector('[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"')) {
+				if (autoPlay && el2.tagName != 'DOM-REPEAT') {
+					if (!settings.shortsAutoScrollAlwaysOn && el.querySelector('[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"')) return;
 					el.loadVideo(+el2.id);
 					el2.scrollIntoView();
 					setTimeout(function () {
