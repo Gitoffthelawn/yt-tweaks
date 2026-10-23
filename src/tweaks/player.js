@@ -1336,7 +1336,7 @@ ytTweaks.tweaks.push(function (settings) {
 					el.loadVideo(+el2.id);
 					el2.scrollIntoView();
 					setTimeout(function () {
-						if (el2.__dataHost?.__data?.item?.adsOverlay) {
+						if (el2.__dataHost.__data.item.command.reelWatchEndpoint.adClientParams) {
 							el2 = el2.nextElementSibling;
 							el.loadVideo(+el2.id);
 							el2.scrollIntoView();
