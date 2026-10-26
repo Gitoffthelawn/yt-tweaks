@@ -390,7 +390,7 @@ ytTweaks.tweaks.push(function (settings) {
         ytTweaks.getHotkeys()[settings.toggleTranscriptHotkey] = function () {
             const hide = document.querySelector('[target-id="PAmodern_transcript_view"][visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]');
 
-            document.querySelector('ytd-app').resolveCommand({
+            document.querySelector('ytd-app').handleCommandWithCommandHandler({
                 [(hide ? 'hide' : 'show') + 'EngagementPanelEndpoint']: {
                     identifier: {
                         tag: 'PAmodern_transcript_view',
