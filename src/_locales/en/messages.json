@@ -110,6 +110,9 @@
     "hide": {
         "message": "Hide"
     },
+    "hide_in_overflow_menu": {
+        "message": "Hide in overflow menu"
+    },
     "dim": {
         "message": "Dim"
     },

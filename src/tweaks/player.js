@@ -222,7 +222,7 @@ ytTweaks.tweaks.push(function (settings) {
 
 	    function addRevealButton() {
 			ytTweaks.sheet.textContent += `
-			#yttw-hidden-controls {
+			#yttw-overflow-menu {
 			  display: flex;
 			  flex-wrap: wrap;
 			  position: absolute;
@@ -234,11 +234,11 @@ ytTweaks.tweaks.push(function (settings) {
 			  transition: opacity 0.1s cubic-bezier(0, 0, .2, 1), visibility 0.1s;
 			}
 
-			#movie_player.ytp-xsmall-width-mode #yttw-hidden-controls > button {
+			#movie_player.ytp-xsmall-width-mode #yttw-overflow-menu > button {
 			  height: 32px;
 			}
 
-			#yttw-hidden-controls > button {
+			#yttw-overflow-menu > button {
 			  height: 40px;
 			}
 			`;
@@ -250,7 +250,7 @@ ytTweaks.tweaks.push(function (settings) {
 	        button.addEventListener('click', toggleMenu);
 
 	        const menu = document.createElement('div');
-	        menu.id = 'yttw-hidden-controls';
+	        menu.id = 'yttw-overflow-menu';
 	        menu.appendChild(hiddenControls);
 
 	        visibleControls.prepend(button, menu);

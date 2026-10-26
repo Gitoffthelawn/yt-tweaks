@@ -110,6 +110,9 @@
     "hide": {
         "message": "Ausblenden"
     },
+    "hide_in_overflow_menu": {
+        "message": "Im Überlaufmenü ausblenden"
+    },
     "dim": {
         "message": "Abdunkeln"
     },
@@ -183,7 +186,7 @@
         "message": "Kinomodus"
     },
     "auto_theater_mode": {
-        "message": "„Kinomodus“ automatisch aktivieren"
+        "message": "Kinomodus automatisch aktivieren"
     },
     "player_height": {
         "message": "Playerhöhe"

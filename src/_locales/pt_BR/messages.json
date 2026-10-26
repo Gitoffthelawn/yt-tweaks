@@ -6,7 +6,7 @@
         "message": "ltr"
     },
     "extension_description": {
-        "message": "Uma coleção de mods para o YouTube, como ocultar Shorts, mudar o número de vídeos por linha e mais!"
+        "message": "Uma coleção de mods para o YouTube, como esconder Shorts, mudar o número de vídeos por linha e mais!"
     },
     "search": {
         "message": "Pesquisar"
@@ -108,7 +108,10 @@
         "message": "Desativar"
     },
     "hide": {
-        "message": "Ocultar"
+        "message": "Esconder"
+    },
+    "hide_in_overflow_menu": {
+        "message": "Esconder no menu flutuante"
     },
     "dim": {
         "message": "Ofuscar"
@@ -174,7 +177,7 @@
         "message": "Largura mínima das colunas "
     },
     "hide_profile_pictures": {
-        "message": "Ocultar fotos de perfil"
+        "message": "Esconder fotos de perfil"
     },
     "decrease_font_size": {
         "message": "Diminuir o texto"
@@ -195,7 +198,7 @@
         "message": "Altura "
     },
     "auto_hide_header": {
-        "message": "Ocultar automaticamente o cabeçalho"
+        "message": "Esconder automaticamente o cabeçalho"
     },
     "video_focus": {
         "message": "Modo foco"
@@ -736,10 +739,10 @@
         "message": "Usar altura do player"
     },
     "hide_header": {
-        "message": "Ocultar cabeçalho "
+        "message": "Esconder cabeçalho "
     },
     "hide_comment_field": {
-        "message": "Ocultar campo de comentário"
+        "message": "Esconder campo de comentário"
     },
     "share_button": {
         "message": "Botão Compartilhar"
@@ -763,7 +766,7 @@
         "message": "Resultados em forma de grelha"
     },
     "hide_right_sidebar": {
-        "message": "Ocultar barra lateral"
+        "message": "Esconder barra lateral"
     },
     "irrelevant_search_results": {
         "message": "Resultados irrelevante"
