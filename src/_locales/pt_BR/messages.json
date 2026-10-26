@@ -182,6 +182,9 @@
     "theater_mode": {
         "message": "Modo Teatro"
     },
+    "auto_theater_mode": {
+        "message": "Ativar o Modo Teatro automaticamente"
+    },
     "player_height": {
         "message": "Altura do player"
     },

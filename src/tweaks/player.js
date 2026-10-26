@@ -2008,6 +2008,13 @@ ytTweaks.tweaks.push(function (settings) {
 		};
 	}
 
+	if (settings.autoTheaterMode) {
+		document.addEventListener('yt-navigate-finish', function(e) {
+			e.target.dispatch({type:'SET_IS_THEATER_MODE', payload:{isTheaterMode:true}});
+			document.dispatchEvent(new CustomEvent('yt-set-theater-mode-enabled', {detail:{enabled:true}}));
+		}, {once: true});
+	}
+
 	if (settings.fullscreenTheaterMode) {
 		const videoHeight = settings.ftmHeight ?? 100;
 		const autoHideHeader = settings.ftmAutoHideHeader != false;

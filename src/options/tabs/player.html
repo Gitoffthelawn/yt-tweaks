@@ -1,19 +1,5 @@
 <section>
   <label>
-    <span data-text="theater_mode">: <span data-text="player_height"></span><span class="subLabel" data-text="theater_mode_player_height_option_sub_label"></span></span>
-    <input type="checkbox" id="fullscreenTheaterMode">
-  </label>
-  <div class="expandable">
-    <label>
-      <span data-text="height">(%)</span>
-      <input is="number-box" id="ftmHeight" min="0" max="100" step="1" value="100">
-    </label>
-    <label>
-      <span data-text="auto_hide_header"></span>
-      <input type="checkbox" checked id="ftmAutoHideHeader">
-    </label>
-  </div>
-  <label>
     <span data-text="video_focus"><span class="subLabel" data-text="video_focus_option_sub_label"></span>
     </span>
     <input type="checkbox" id="videoFocus">
@@ -78,6 +64,27 @@
     <button is="set-hotkey" id="toggleLoopHotkey">
     </button>
   </label>
+</section>
+<section>
+  <h4 data-text="theater_mode"></h4>
+  <label>
+    <span data-text="auto_theater_mode"></span>
+    <input type="checkbox" id="autoTheaterMode">
+  </label>
+  <label>
+    <span data-text="player_height"><span class="subLabel" data-text="theater_mode_player_height_option_sub_label"></span></span>
+    <input type="checkbox" id="fullscreenTheaterMode">
+  </label>
+  <div class="expandable">
+    <label>
+      <span data-text="height">(%)</span>
+      <input is="number-box" id="ftmHeight" min="0" max="100" step="1" value="100">
+    </label>
+    <label>
+      <span data-text="auto_hide_header"></span>
+      <input type="checkbox" checked id="ftmAutoHideHeader">
+    </label>
+  </div>
 </section>
 <section>
   <h4 data-text="disable"></h4>

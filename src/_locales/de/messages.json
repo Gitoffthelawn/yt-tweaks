@@ -182,6 +182,9 @@
     "theater_mode": {
         "message": "Kinomodus"
     },
+    "auto_theater_mode": {
+        "message": "„Kinomodus“ automatisch aktivieren"
+    },
     "player_height": {
         "message": "Playerhöhe"
     },

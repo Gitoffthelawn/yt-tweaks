@@ -182,6 +182,9 @@
     "theater_mode": {
         "message": "Theater mode"
     },
+    "auto_theater_mode": {
+        "message": "Automatically enable Theater mode"
+    },
     "player_height": {
         "message": "Player height"
     },
